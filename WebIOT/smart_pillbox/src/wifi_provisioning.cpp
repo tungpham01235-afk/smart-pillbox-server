@@ -309,7 +309,11 @@ void WifiProv_Init(AsyncWebServer &server) {
 
   // Đăng ký các endpoints cho trang cấu hình
   server.on("/", HTTP_GET, [](AsyncWebServerRequest *request) {
-    request->send_P(200, "text/html", CONFIG_PORTAL_HTML);
+    AsyncWebServerResponse *response = request->beginResponse_P(200, "text/html", CONFIG_PORTAL_HTML);
+    response->addHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+    response->addHeader("Pragma", "no-cache");
+    response->addHeader("Expires", "0");
+    request->send(response);
   });
 
   server.on("/api/scan-wifi", HTTP_GET, [](AsyncWebServerRequest *request) {
@@ -391,7 +395,14 @@ void WifiProv_Init(AsyncWebServer &server) {
 
   // Tự động chuyển hướng toàn bộ các request không đúng đường dẫn về trang chủ Captive Portal
   server.onNotFound([](AsyncWebServerRequest *request) {
-    request->redirect("http://192.168.4.1/");
+    // Trả về 302 Found kèm các Header chống cache và đóng kết nối nhanh để kích hoạt Windows/MacOS Captive Portal
+    AsyncWebServerResponse *response = request->beginResponse(302, "text/plain", "");
+    response->addHeader("Location", "http://192.168.4.1/");
+    response->addHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+    response->addHeader("Pragma", "no-cache");
+    response->addHeader("Expires", "0");
+    response->addHeader("Connection", "close");
+    request->send(response);
   });
 
   // Chạy Web Server
