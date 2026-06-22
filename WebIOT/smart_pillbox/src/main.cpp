@@ -117,9 +117,13 @@ void loop() {
   // 1. Duy tri DNS Server trong AP Mode & reset khi can
   WifiProv_Loop();
 
-  // 2. Kiem tra va reconnect Wi-Fi neu mat ket noi (Chi khi KHONG o AP Mode)
-  if (!WifiProv_IsAPMode()) {
-    if (millis() - _lastWifiCheck >= WIFI_RECONNECT_INTERVAL_MS) {
+  // Nếu đang trong chế độ cấu hình Wi-Fi (AP Mode), tạm dừng mọi hoạt động cảm biến, báo động để tránh xung đột LittleFS
+  if (WifiProv_IsAPMode()) {
+    return;
+  }
+
+  // 2. Kiem tra va reconnect Wi-Fi neu mat ket noi
+  if (millis() - _lastWifiCheck >= WIFI_RECONNECT_INTERVAL_MS) {
       _lastWifiCheck = millis();
       if (WiFi.status() != WL_CONNECTED) {
         DBGLN("[WIFI] Mat ket noi! Dang thu lai...");
@@ -142,7 +146,6 @@ void loop() {
         DBGLN("[WIFI] NTP + Web Server + Cloud Sync da khoi dong lai");
       }
     }
-  }
 
   // 3. Doc cam bien (voi debounce noi bo)
   //    Goi TRUOC AlarmManager de dam bao edge flags san sang
