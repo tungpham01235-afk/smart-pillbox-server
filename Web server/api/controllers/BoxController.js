@@ -181,6 +181,39 @@ module.exports = {
         }
     },
 
+    // 3.6 Đặt lại Wi-Fi thiết bị từ xa (Xóa /wifi.json và Restart ESP32)
+    resetDeviceWifi: async (req, res) => {
+        try {
+            const boxId = sanitizeBoxId(req.params.boxId || req.body.boxId);
+            const userId = req.user.userId;
+
+            // Tìm thiết bị thuộc quyền sở hữu của User
+            const box = await Box.findOne({ boxId, ownerId: userId });
+            if (!box) {
+                return res.status(404).json({ success: false, message: 'Không tìm thấy thiết bị hoặc bạn không có quyền!' });
+            }
+
+            box.resetWifi = true; // Kích hoạt cờ reset Wi-Fi
+            await box.save();
+
+            // Gửi thông báo WebSocket về client
+            const io = req.app.get('io');
+            const socketUserId = userId.toString(); 
+            io.to(socketUserId).emit('new-notification', { 
+                message: `Đã gửi yêu cầu đặt lại Wi-Fi tới thiết bị (${boxId}). Thiết bị sẽ nhận lệnh và reset trong chu kỳ sync kế tiếp.`,
+                time: new Date(),
+                boxId: boxId
+            });
+
+            return res.json({ 
+                success: true, 
+                message: 'Đã gửi yêu cầu đặt lại Wi-Fi thiết bị thành công!' 
+            });
+        } catch (err) {
+            return res.status(500).json({ success: false, error: err.message });
+        }
+    },
+
     // 4. Đồng bộ Log từ ESP32 & Gửi thông báo
     savePillLog: async (req, res) => {
         try {
@@ -339,6 +372,16 @@ module.exports = {
             const triggerVal = box.triggerTestAlarm || 0;
             if (triggerVal > 0) {
                 box.triggerTestAlarm = 0;
+            }
+
+            // Kiểm tra và lấy cờ reset Wi-Fi
+            const resetWifiVal = box.resetWifi || false;
+            if (resetWifiVal) {
+                box.resetWifi = false;
+            }
+
+            // Lưu thay đổi cờ (nếu có)
+            if (triggerVal > 0 || resetWifiVal) {
                 await box.save();
             }
 
@@ -356,7 +399,8 @@ module.exports = {
             return res.json({
                 success: true,
                 compartments: box.compartments,
-                triggerTestAlarm: triggerVal
+                triggerTestAlarm: triggerVal,
+                resetWifi: resetWifiVal
             });
         } catch (err) {
             return res.status(500).json({ success: false, error: err.message });

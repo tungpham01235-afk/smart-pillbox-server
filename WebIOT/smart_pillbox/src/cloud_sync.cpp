@@ -10,6 +10,7 @@
 #include "storage_manager.h"
 #include "alarm_manager.h"
 #include "sensor_manager.h"
+#include "wifi_provisioning.h"
 #include <WiFi.h>
 #include <HTTPClient.h>
 #include <WiFiClientSecure.h>
@@ -217,6 +218,12 @@ void CloudSync_PullConfig(bool force) {
         DBGLN("[CLOUD] Nhan lenh test canh bao tu Web Dashboard!");
         AlarmManager_TriggerTest(triggerVal - 1);
       }
+    }
+
+    // Kiểm tra cờ đặt lại Wi-Fi từ Web Dashboard
+    if (cloudDoc.containsKey("resetWifi") && cloudDoc["resetWifi"].as<bool>() == true) {
+      DBGLN("[CLOUD] Nhan lenh dat lai Wi-Fi tu Web Dashboard!");
+      WifiProv_ForceReset();
     }
 
     JsonArray cloudComps = cloudDoc["compartments"].as<JsonArray>();

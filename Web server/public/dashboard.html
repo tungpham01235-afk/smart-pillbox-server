@@ -330,6 +330,16 @@
                     <input type="password" id="editConfirmPassword" class="form-control" placeholder="Nhập lại mật khẩu mới">
                 </div>
                 <button class="btn btn-primary w-100 mb-3 py-2" onclick="updateProfile()">Cập nhật thông tin</button>
+                
+                <!-- Bổ sung quản lý Reset Wi-Fi phần cứng -->
+                <hr class="my-4">
+                <div class="mb-4 p-3 border rounded bg-light">
+                    <label class="form-label fw-bold text-danger">⚠️ Quản lý cấu hình phần cứng</label>
+                    <p class="small text-muted mb-3">Xóa dữ liệu Wi-Fi đã lưu trên tủ thuốc và đưa tủ thuốc về chế độ cấu hình Wi-Fi mới (AP Mode). Sau khi thực hiện, còi thiết bị sẽ kêu bíp dài báo hiệu và tự khởi động lại.</p>
+                    <button class="btn btn-danger w-100 py-2 fw-bold" onclick="resetDeviceWifi()">⚙️ Đặt lại Wi-Fi thiết bị</button>
+                </div>
+                <hr class="my-4">
+
                 <button class="btn btn-outline-danger w-100 py-2" onclick="logout()">Đăng xuất</button>
             </div>
         </div>
@@ -1002,6 +1012,37 @@
                 localStorage.removeItem('userId');
                 localStorage.removeItem('boxId');
                 window.location.href = '/'; 
+            }
+        }
+
+        async function resetDeviceWifi() {
+            const boxId = localStorage.getItem('boxId');
+            if (!boxId) {
+                return showNotification("⚠️ Không tìm thấy tủ thuốc nào được liên kết với tài khoản này!");
+            }
+
+            if (!confirm(`Bạn có chắc chắn muốn đặt lại Wi-Fi cho thiết bị (${boxId}) không?\n\nSau khi nhấn, thiết bị sẽ tự động xóa cấu hình Wi-Fi hiện tại, còi kêu bíp và tự khởi động lại vào chế độ Access Point (phát Wi-Fi cấu hình mới).`)) {
+                return;
+            }
+
+            try {
+                const token = localStorage.getItem('token');
+                const res = await fetch(`/api/box/${boxId}/reset-wifi`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                const result = await res.json();
+                if (res.ok && result.success) {
+                    showNotification("🚀 Đã gửi lệnh đặt lại Wi-Fi thiết bị thành công!");
+                } else {
+                    showNotification(`❌ Lỗi: ${result.message || "Không thể gửi yêu cầu."}`);
+                }
+            } catch (e) {
+                showNotification("❌ Lỗi kết nối tới Server trung tâm!");
             }
         }
 

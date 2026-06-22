@@ -40,6 +40,10 @@ module.exports = function(app) {
     app.route('/api/box/:boxId/test-alarm')
         .post(checkAuth, boxCtrl.testAlarm);
 
+    // Đặt lại Wi-Fi thiết bị từ xa
+    app.route('/api/box/:boxId/reset-wifi')
+        .post(checkAuth, boxCtrl.resetDeviceWifi);
+
     // =========================================================================
     // NHÓM 3: ĐỒNG BỘ DỮ LIỆU & LỊCH SỬ (LOGS SYSTEM)
     // =========================================================================

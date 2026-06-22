@@ -208,3 +208,68 @@ bool Storage_ClearLogs() {
   DBGLN("[STORAGE] Logs cleared OK");
   return true;
 }
+
+// ════════════════════════════════════════
+// Storage_LoadWifi — Doc /wifi.json
+// ════════════════════════════════════════
+bool Storage_LoadWifi(String &ssid, String &pass, String &boxId, String &devKey) {
+  if (!LittleFS.exists("/wifi.json")) {
+    DBGLN("[STORAGE] File wifi.json khong ton tai!");
+    return false;
+  }
+
+  File file = LittleFS.open("/wifi.json", "r");
+  if (!file) {
+    DBGLN("[STORAGE] Loi mo wifi.json de doc!");
+    return false;
+  }
+
+  DynamicJsonDocument doc(512);
+  DeserializationError err = deserializeJson(doc, file);
+  file.close();
+
+  if (err) {
+    DBGLN("[STORAGE] JSON parse loi wifi.json!");
+    return false;
+  }
+
+  ssid = doc["ssid"].as<String>();
+  pass = doc["pass"].as<String>();
+  boxId = doc["boxId"] | String(CLOUD_BOX_ID);
+  devKey = doc["devKey"] | String(CLOUD_DEVICE_KEY);
+
+  DBGLN("[STORAGE] Loaded wifi credentials: " + ssid);
+  return ssid.length() > 0;
+}
+
+// ════════════════════════════════════════
+// Storage_SaveWifi — Ghi de /wifi.json
+// ════════════════════════════════════════
+bool Storage_SaveWifi(const String &ssid, const String &pass, const String &boxId, const String &devKey) {
+  File file = LittleFS.open("/wifi.json", "w");
+  if (!file) {
+    DBGLN("[STORAGE] Loi mo wifi.json de ghi!");
+    return false;
+  }
+
+  DynamicJsonDocument doc(512);
+  doc["ssid"] = ssid;
+  doc["pass"] = pass;
+  doc["boxId"] = boxId;
+  doc["devKey"] = devKey;
+
+  serializeJson(doc, file);
+  file.close();
+  DBGLN("[STORAGE] Saved wifi config to wifi.json");
+  return true;
+}
+
+// ════════════════════════════════════════
+// Storage_ClearWifi — Xoa file /wifi.json
+// ════════════════════════════════════════
+void Storage_ClearWifi() {
+  if (LittleFS.exists("/wifi.json")) {
+    LittleFS.remove("/wifi.json");
+    DBGLN("[STORAGE] Da xoa file wifi.json!");
+  }
+}

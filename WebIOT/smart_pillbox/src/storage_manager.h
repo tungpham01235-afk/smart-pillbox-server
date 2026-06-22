@@ -16,3 +16,8 @@ bool Storage_AppendLog(int compartmentId, const String& type,
                        const String& message, const String& timestamp);
 bool Storage_GetLogs(JsonDocument& outDoc);
 bool Storage_ClearLogs();
+
+// WiFi credentials storage
+bool Storage_LoadWifi(String &ssid, String &pass, String &boxId, String &devKey);
+bool Storage_SaveWifi(const String &ssid, const String &pass, const String &boxId, const String &devKey);
+void Storage_ClearWifi();

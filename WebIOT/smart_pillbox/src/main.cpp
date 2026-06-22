@@ -21,6 +21,7 @@
 #include "storage_manager.h"
 #include "time_manager.h"
 #include "web_server_handler.h"
+#include "wifi_provisioning.h"
 #include <Arduino.h>
 #include <ESPAsyncWebServer.h>
 #include <WiFi.h>
@@ -56,34 +57,9 @@ void setup() {
     DBGLN("[BOOT] LittleFS: FAIL — He thong co the hoat dong khong on dinh!");
   }
 
-  // ── 3. Ket noi Wi-Fi ──
-  WiFi.mode(WIFI_STA);
-  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
-  DBG("[WIFI] Dang ket noi ");
-  DBG(WIFI_SSID);
-  DBG(" ");
-
-  int retryCount = 0;
-  while (WiFi.status() != WL_CONNECTED && retryCount < WIFI_RETRY_COUNT) {
-    delay(WIFI_RETRY_DELAY_MS);
-    DBG(".");
-    retryCount++;
-  }
-
-  if (WiFi.status() == WL_CONNECTED) {
-    _wifiConnected = true;
-    Serial.println();
-    DBG("[WIFI] Da ket noi! IP: ");
-    DBGLN(WiFi.localIP().toString());
-    DBG("[WIFI] RSSI: ");
-    DBG(String(WiFi.RSSI()));
-    DBGLN(" dBm");
-  } else {
-    _wifiConnected = false;
-    Serial.println();
-    DBGLN("[WIFI] CANH BAO: Khong the ket noi Wi-Fi!");
-    DBGLN("[WIFI] He thong chay offline. Se thu lai moi 30 giay.");
-  }
+  // ── 3. Khoi tao Wi-Fi Provisioning (STA hoac AP Captive Portal) ──
+  WifiProv_Init(server);
+  _wifiConnected = (WiFi.status() == WL_CONNECTED);
 
   // ── 4. NTP (chi khi co Wi-Fi) ──
   if (_wifiConnected) {
@@ -138,40 +114,50 @@ void setup() {
 // loop() — Vong lap chinh, NON-BLOCKING
 // ════════════════════════════════════════
 void loop() {
-  // 1. Kiem tra va reconnect Wi-Fi neu mat ket noi
-  if (millis() - _lastWifiCheck >= WIFI_RECONNECT_INTERVAL_MS) {
-    _lastWifiCheck = millis();
-    if (WiFi.status() != WL_CONNECTED) {
-      DBGLN("[WIFI] Mat ket noi! Dang thu lai...");
-      WiFi.disconnect();
-      WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
-    } else if (!_wifiConnected) {
-      // Vua reconnect thanh cong
-      _wifiConnected = true;
-      DBG("[WIFI] Da ket noi lai! IP: ");
-      DBGLN(WiFi.localIP().toString());
+  // 1. Duy tri DNS Server trong AP Mode & reset khi can
+  WifiProv_Loop();
 
-      // Khoi tao NTP va Web Server neu chua
-      TimeManager_Init();
-      WebServer_Init(server);
-      server.begin();
-      CloudSync_Init();
-      DBGLN("[WIFI] NTP + Web Server + Cloud Sync da khoi dong lai");
+  // 2. Kiem tra va reconnect Wi-Fi neu mat ket noi (Chi khi KHONG o AP Mode)
+  if (!WifiProv_IsAPMode()) {
+    if (millis() - _lastWifiCheck >= WIFI_RECONNECT_INTERVAL_MS) {
+      _lastWifiCheck = millis();
+      if (WiFi.status() != WL_CONNECTED) {
+        DBGLN("[WIFI] Mat ket noi! Dang thu lai...");
+        String ssid, pass, boxId, devKey;
+        if (Storage_LoadWifi(ssid, pass, boxId, devKey)) {
+          WiFi.disconnect();
+          WiFi.begin(ssid.c_str(), pass.c_str());
+        }
+      } else if (!_wifiConnected) {
+        // Vua reconnect thanh cong
+        _wifiConnected = true;
+        DBG("[WIFI] Da ket noi lai! IP: ");
+        DBGLN(WiFi.localIP().toString());
+
+        // Khoi tao NTP va Web Server neu chua
+        TimeManager_Init();
+        WebServer_Init(server);
+        server.begin();
+        CloudSync_Init();
+        DBGLN("[WIFI] NTP + Web Server + Cloud Sync da khoi dong lai");
+      }
     }
   }
 
-  // 2. Doc cam bien (voi debounce noi bo)
+  // 3. Doc cam bien (voi debounce noi bo)
   //    Goi TRUOC AlarmManager de dam bao edge flags san sang
   SensorManager_Update();
 
-  // 3. Cap nhat NTP (tu throttle moi 1 gio)
-  TimeManager_Update();
+  // 4. Cap nhat NTP (tu throttle moi 1 gio, chi khi co Wi-Fi va khong o AP mode)
+  if (_wifiConnected && !WifiProv_IsAPMode()) {
+    TimeManager_Update();
+  }
 
-  // 4. Xu ly state machine bao dong + dieu khien LED/Buzzer
+  // 5. Xu ly state machine bao dong + dieu khien LED/Buzzer
   AlarmManager_Update();
 
-  // 5. Dong bo Cloud
-  if (_wifiConnected) {
+  // 6. Dong bo Cloud
+  if (_wifiConnected && !WifiProv_IsAPMode()) {
     bool sensorChanged = false;
     for (int i = 0; i < 3; i++) {
       SensorState currentVal = SensorManager_GetState(i);
