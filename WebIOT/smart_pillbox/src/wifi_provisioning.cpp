@@ -181,13 +181,22 @@ const char CONFIG_PORTAL_HTML[] PROGMEM = R"rawhtml(
 
         async function scanWifi() {
             const select = document.getElementById('ssid-select');
-            select.innerHTML = '<option value="">Đang quét mạng Wi-Fi...</option>';
+            if (select.value === "") {
+                select.innerHTML = '<option value="">Đang quét mạng Wi-Fi...</option>';
+            }
             try {
                 const res = await fetch('/api/scan-wifi');
                 if (res.ok) {
                     const data = await res.json();
+                    
+                    if (data.status === "scanning") {
+                        // Vẫn đang quét, thử lại sau 1.5 giây
+                        setTimeout(scanWifi, 1500);
+                        return;
+                    }
+
                     select.innerHTML = '';
-                    if (data.length === 0) {
+                    if (!Array.isArray(data) || data.length === 0) {
                         select.innerHTML = '<option value="">Không quét thấy Wi-Fi</option>';
                         return;
                     }
@@ -291,6 +300,9 @@ void WifiProv_Init(AsyncWebServer &server) {
   DBG("[WIFI] IP Cấu hình: ");
   DBGLN(apIP.toString());
 
+  // Khởi động lượt quét Wi-Fi bất đồng bộ đầu tiên
+  WiFi.scanNetworks(true);
+
   // DNS Server chuyển hướng tất cả truy cập (*) về IP AP của ESP32
   dnsServer.start(53, "*", apIP);
   DBGLN("[WIFI] DNS Captive Portal Server bắt đầu.");
@@ -301,27 +313,43 @@ void WifiProv_Init(AsyncWebServer &server) {
   });
 
   server.on("/api/scan-wifi", HTTP_GET, [](AsyncWebServerRequest *request) {
-    int n = WiFi.scanNetworks();
-    DynamicJsonDocument doc(1024);
-    JsonArray arr = doc.to<JsonArray>();
+    int16_t n = WiFi.scanComplete();
     
-    // Thu thập danh sách Wi-Fi duy nhất (Unique SSIDs)
-    std::vector<String> uniqueSSIDs;
-    for (int i = 0; i < n; ++i) {
-      String ssid = WiFi.SSID(i);
-      int rssi = WiFi.RSSI(i);
-      if (ssid.length() > 0 && std::find(uniqueSSIDs.begin(), uniqueSSIDs.end(), ssid) == uniqueSSIDs.end()) {
-        uniqueSSIDs.push_back(ssid);
-        JsonObject obj = arr.createNestedObject();
-        obj["ssid"] = ssid;
-        obj["rssi"] = rssi;
+    if (n == WIFI_SCAN_RUNNING) {
+      request->send(200, "application/json", "{\"status\":\"scanning\"}");
+    } else if (n == WIFI_SCAN_FAILED) {
+      // Quét lỗi hoặc chưa quét, kích hoạt quét lại bất đồng bộ
+      WiFi.scanNetworks(true);
+      request->send(200, "application/json", "{\"status\":\"scanning\"}");
+    } else if (n >= 0) {
+      DynamicJsonDocument doc(1024);
+      JsonArray arr = doc.to<JsonArray>();
+      
+      // Thu thập danh sách Wi-Fi duy nhất (Unique SSIDs)
+      std::vector<String> uniqueSSIDs;
+      for (int i = 0; i < n; ++i) {
+        String ssid = WiFi.SSID(i);
+        int rssi = WiFi.RSSI(i);
+        if (ssid.length() > 0 && std::find(uniqueSSIDs.begin(), uniqueSSIDs.end(), ssid) == uniqueSSIDs.end()) {
+          uniqueSSIDs.push_back(ssid);
+          JsonObject obj = arr.createNestedObject();
+          obj["ssid"] = ssid;
+          obj["rssi"] = rssi;
+        }
       }
+      
+      String json;
+      serializeJson(doc, json);
+      WiFi.scanDelete(); // Giải phóng bộ nhớ kết quả quét cũ
+      
+      // Kích hoạt luôn lượt quét mới ngầm để chuẩn bị cho lần quét sau
+      WiFi.scanNetworks(true);
+      
+      request->send(200, "application/json", json);
+    } else {
+      WiFi.scanNetworks(true);
+      request->send(200, "application/json", "{\"status\":\"scanning\"}");
     }
-    
-    String json;
-    serializeJson(doc, json);
-    WiFi.scanDelete();
-    request->send(200, "application/json", json);
   });
 
   server.on("/api/defaults", HTTP_GET, [](AsyncWebServerRequest *request) {
