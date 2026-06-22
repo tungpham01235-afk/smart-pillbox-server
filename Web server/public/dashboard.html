@@ -726,7 +726,7 @@
 
                     let badgeColor = 'bg-secondary';
                     if (log.status === 'Đúng giờ' || log.status === 'Đã uống') badgeColor = 'bg-success';
-                    if (log.status === 'Quá giờ' || log.status === 'Chưa uống') badgeColor = 'bg-danger';
+                    if (log.status === 'Quá giờ' || log.status === 'Chưa uống' || log.status === 'Bỏ lỡ') badgeColor = 'bg-danger';
                     if (log.status === 'Mở tủ sai') badgeColor = 'bg-warning text-dark';
 
                     li.innerHTML = `

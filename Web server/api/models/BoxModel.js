@@ -19,6 +19,7 @@ const BoxSchema = new mongoose.Schema({
     boxId: { type: String, required: true, unique: true },
     ownerId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     lastActive: { type: Date, default: null }, // Thời gian tương tác cuối của ESP32
+    triggerTestAlarm: { type: Number, default: 0 }, // Cờ kích hoạt test còi/đèn vật lý (1-3)
     
     // Mảng chứa đúng 3 ngăn thuốc cố định
     compartments: { type: [CompartmentSchema], default: [] } 

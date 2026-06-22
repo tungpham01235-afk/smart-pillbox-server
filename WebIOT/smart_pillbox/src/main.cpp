@@ -33,6 +33,7 @@ AsyncWebServer server(80);
 // Bien theo doi Wi-Fi reconnect
 static unsigned long _lastWifiCheck = 0;
 static bool _wifiConnected = false;
+static SensorState _prevSensorStates[3] = {SENSOR_ABSENT, SENSOR_ABSENT, SENSOR_ABSENT};
 
 // ════════════════════════════════════════
 // setup() — Khoi tao he thong theo thu tu
@@ -97,6 +98,9 @@ void setup() {
 
   // ── 5. Cam bien IR ──
   SensorManager_Init();
+  for (int i = 0; i < 3; i++) {
+    _prevSensorStates[i] = SensorManager_GetState(i);
+  }
   DBGLN("[BOOT] Sensor: 3 cam bien san sang");
 
   // ── 6. Alarm State Machine ──
@@ -168,7 +172,15 @@ void loop() {
 
   // 5. Dong bo Cloud
   if (_wifiConnected) {
-    CloudSync_PullConfig();
+    bool sensorChanged = false;
+    for (int i = 0; i < 3; i++) {
+      SensorState currentVal = SensorManager_GetState(i);
+      if (currentVal != _prevSensorStates[i]) {
+        sensorChanged = true;
+        _prevSensorStates[i] = currentVal;
+      }
+    }
+    CloudSync_PullConfig(sensorChanged);
     CloudSync_ProcessRetryLogs();
   }
 

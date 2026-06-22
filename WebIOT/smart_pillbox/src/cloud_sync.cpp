@@ -170,10 +170,10 @@ void CloudSync_ProcessRetryLogs() {
   }
 }
 
-void CloudSync_PullConfig() {
+void CloudSync_PullConfig(bool force) {
   if (WiFi.status() != WL_CONNECTED) return;
 
-  if (millis() - _lastConfigPull < CLOUD_SYNC_INTERVAL_MS) return;
+  if (!force && (millis() - _lastConfigPull < CLOUD_SYNC_INTERVAL_MS)) return;
   _lastConfigPull = millis();
 
   WiFiClientSecure client;
@@ -198,6 +198,15 @@ void CloudSync_PullConfig() {
     if (err || !cloudDoc["success"]) {
       http.end();
       return;
+    }
+
+    // Kiểm tra cờ test còi/đèn vật lý từ Web Dashboard
+    if (cloudDoc.containsKey("triggerTestAlarm")) {
+      int triggerVal = cloudDoc["triggerTestAlarm"].as<int>();
+      if (triggerVal > 0 && triggerVal <= NUM_COMPARTMENTS) {
+        DBGLN("[CLOUD] Nhan lenh test canh bao tu Web Dashboard!");
+        AlarmManager_TriggerTest(triggerVal - 1);
+      }
     }
 
     JsonArray cloudComps = cloudDoc["compartments"].as<JsonArray>();

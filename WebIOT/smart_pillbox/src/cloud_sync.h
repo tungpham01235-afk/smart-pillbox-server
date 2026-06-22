@@ -16,7 +16,7 @@ void CloudSync_Init();
 bool CloudSync_SendLog(int compartmentId, const String& status);
 
 // Định kỳ kéo cấu hình 3 ngăn từ Cloud Server (phi chặn)
-void CloudSync_PullConfig();
+void CloudSync_PullConfig(bool force = false);
 
 // Gửi bù các logs bị lỗi khi mất Wi-Fi (gọi định kỳ)
 void CloudSync_ProcessRetryLogs();

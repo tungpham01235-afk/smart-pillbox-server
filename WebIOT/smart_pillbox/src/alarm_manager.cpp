@@ -145,7 +145,7 @@ void AlarmManager_Update() {
         String timeStr = TimeManager_GetTimeString();
         String msg = "[" + timeStr + "] " + _config[i].medicineName + ": Qua gio - khong uong thuoc!";
         Storage_AppendLog(i + 1, "MISSED", msg, TimeManager_GetDateTimeString());
-        CloudSync_SendLog(i + 1, "Chưa uống");
+        CloudSync_SendLog(i + 1, "Bỏ lỡ");
 
         DBG("[ALARM] Ngan ");
         DBG(i + 1);
@@ -162,6 +162,9 @@ void AlarmManager_Update() {
         DBG("[ALARM] Ngan ");
         DBG(i + 1);
         DBGLN(": Kich ban A - Den gio hen!");
+
+        // Gửi thông báo đến giờ uống thuốc lên server ngay lập tức
+        CloudSync_SendLog(i + 1, "Chưa uống");
       }
     }
   }

@@ -18,7 +18,7 @@ const LogSchema = new mongoose.Schema({
     // Trạng thái vận hành của hộp thuốc
     status: { 
         type: String, 
-        enum: ['Đúng giờ', 'Quá giờ', 'Mở tủ sai', 'Đã uống', 'Chưa uống'], 
+        enum: ['Đúng giờ', 'Quá giờ', 'Mở tủ sai', 'Đã uống', 'Chưa uống', 'Bỏ lỡ'], 
         required: true 
     },
     

@@ -146,8 +146,10 @@ module.exports = {
                 } else if (finalStatus === 'Chưa uống') {
                     box.compartments[compIdx].isMedicinePresent = true;  // Có thuốc nhưng chưa lấy
                 }
-                await box.save();
             }
+
+            box.triggerTestAlarm = compId; // Kích hoạt test còi/đèn vật lý trên mạch thật
+            await box.save();
 
             // Tiến hành gửi thông báo tới người dùng nếu thiết bị đã kích hoạt chủ sở hữu
             if (box.ownerId) {
@@ -227,8 +229,19 @@ module.exports = {
                 const io = req.app.get('io');
                 const userId = box.ownerId._id.toString(); 
 
+                let displayMessage = `Hộp thuốc báo cáo: Đã ghi nhận tác động tại ngăn ${compartmentId} (${medicineName}) - Trạng thái: ${status} (${conditionDetails})`;
+                if (status === 'Chưa uống') {
+                    displayMessage = `🔔 Đến giờ uống thuốc: Ngăn ${compartmentId} (${medicineName}) - Trạng thái: Chưa uống (${conditionDetails})`;
+                } else if (status === 'Đã uống' || status === 'Đúng giờ') {
+                    displayMessage = `✅ Xác nhận đã uống thuốc tại ngăn ${compartmentId} (${medicineName}) - Trạng thái: Đúng giờ`;
+                } else if (status === 'Mở tủ sai') {
+                    displayMessage = `⚠️ Cảnh báo: Đã ghi nhận mở khay thuốc sai cữ tại ngăn ${compartmentId} (${medicineName})!`;
+                } else if (status === 'Bỏ lỡ') {
+                    displayMessage = `🔴 Cảnh báo trễ cữ: Bạn đã bỏ lỡ lịch nhắc uống thuốc ${medicineName} (${conditionDetails})!`;
+                }
+
                 io.to(userId).emit('new-notification', { 
-                    message: `Hộp thuốc báo cáo: Đã ghi nhận tác động tại ngăn ${compartmentId} (${medicineName}) - Trạng thái: ${status} (${conditionDetails})`,
+                    message: displayMessage,
                     time: new Date(),
                     boxId: boxId
                 });
@@ -322,6 +335,13 @@ module.exports = {
                 await box.save();
             }
 
+            // Kiểm tra và lấy cờ test còi/đèn vật lý
+            const triggerVal = box.triggerTestAlarm || 0;
+            if (triggerVal > 0) {
+                box.triggerTestAlarm = 0;
+                await box.save();
+            }
+
             // Bắn tín hiệu trạng thái kết nối Online của thiết bị thông qua Socket
             if (box.ownerId) {
                 const io = req.app.get('io');
@@ -335,7 +355,8 @@ module.exports = {
 
             return res.json({
                 success: true,
-                compartments: box.compartments
+                compartments: box.compartments,
+                triggerTestAlarm: triggerVal
             });
         } catch (err) {
             return res.status(500).json({ success: false, error: err.message });
