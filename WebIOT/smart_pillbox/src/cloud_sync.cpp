@@ -170,33 +170,43 @@ void CloudSync_ProcessRetryLogs() {
   }
 }
 
+// Static instances to reuse connection and avoid high-overhead TLS handshakes on every poll
+static WiFiClientSecure _pullSecureClient;
+static HTTPClient _pullHttpClient;
+static bool _pullClientInitialized = false;
+
 void CloudSync_PullConfig(bool force) {
   if (WiFi.status() != WL_CONNECTED) return;
 
   if (!force && (millis() - _lastConfigPull < CLOUD_SYNC_INTERVAL_MS)) return;
   _lastConfigPull = millis();
 
-  WiFiClientSecure client;
-  client.setInsecure();
-  HTTPClient http;
+  if (!_pullClientInitialized) {
+    _pullSecureClient.setInsecure();
+    // Cho phép HTTPClient giữ kết nối TCP/TLS mở để tái sử dụng
+    _pullHttpClient.setReuse(true);
+    _pullHttpClient.setTimeout(4000); // Timeout 4s
+    _pullClientInitialized = true;
+  }
+
   String url = String(CLOUD_SERVER_URL) + "/api/device/config?boxId=" + String(CLOUD_BOX_ID);
   url += "&s1=" + String(SensorManager_GetState(0) == SENSOR_PRESENT ? "true" : "false");
   url += "&s2=" + String(SensorManager_GetState(1) == SENSOR_PRESENT ? "true" : "false");
   url += "&s3=" + String(SensorManager_GetState(2) == SENSOR_PRESENT ? "true" : "false");
   
-  http.begin(client, url);
-  http.addHeader("x-device-key", CLOUD_DEVICE_KEY);
+  _pullHttpClient.begin(_pullSecureClient, url);
+  _pullHttpClient.addHeader("x-device-key", CLOUD_DEVICE_KEY);
 
-  int httpCode = http.GET();
+  int httpCode = _pullHttpClient.GET();
 
   if (httpCode == 200) {
-    String payload = http.getString();
+    String payload = _pullHttpClient.getString();
     
     DynamicJsonDocument cloudDoc(2048);
     DeserializationError err = deserializeJson(cloudDoc, payload);
     
     if (err || !cloudDoc["success"]) {
-      http.end();
+      _pullHttpClient.end();
       return;
     }
 
@@ -211,7 +221,7 @@ void CloudSync_PullConfig(bool force) {
 
     JsonArray cloudComps = cloudDoc["compartments"].as<JsonArray>();
     if (cloudComps.size() == 0) {
-      http.end();
+      _pullHttpClient.end();
       return;
     }
 
@@ -221,7 +231,7 @@ void CloudSync_PullConfig(bool force) {
       // Nếu lỗi load local config, ghi đè luôn
       Storage_SaveConfig(cloudDoc);
       AlarmManager_ReloadConfig();
-      http.end();
+      _pullHttpClient.end();
       return;
     }
 
@@ -294,7 +304,11 @@ void CloudSync_PullConfig(bool force) {
     DBG("[CLOUD] Lỗi kết nối kéo config (HTTP Code: ");
     DBG(httpCode);
     DBGLN(")");
+    if (httpCode <= 0) {
+      _pullHttpClient.end();
+    }
   }
 
-  http.end();
+  // Kết thúc request, giải phóng buffer nhưng giữ nguyên socket do setReuse(true)
+  _pullHttpClient.end();
 }

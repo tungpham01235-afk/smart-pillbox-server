@@ -96,5 +96,5 @@ static const char *DEFAULT_MEAL_NOTE[3] = {"Sau khi an", "Sau khi an",
 #define CLOUD_SERVER_URL "https://smart-pillbox-server-production.up.railway.app" // URL của Web Server chạy trên Railway
 #define CLOUD_DEVICE_KEY "SmartPillboxSecretKey2026"
 #define CLOUD_BOX_ID "box_01"            // ID thiết bị này để khớp với DB
-#define CLOUD_SYNC_INTERVAL_MS 30000UL   // Định kỳ kéo cấu hình mỗi 30s
+#define CLOUD_SYNC_INTERVAL_MS 2000UL   // Định kỳ kéo cấu hình mỗi 2s (kết nối keep-alive tối ưu)
 #define CLOUD_LOG_RETRY_INTERVAL 60000UL // Định kỳ gửi bù logs offline mỗi 60s

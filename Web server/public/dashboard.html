@@ -470,7 +470,7 @@
                     updateConnectionBadge(false, null);
                 } else if (lastDeviceActiveTime) {
                     const diffMs = new Date() - lastDeviceActiveTime;
-                    const isOnlineNow = diffMs < 70000;
+                    const isOnlineNow = diffMs < 15000; // Thay đổi từ 70000 thành 15000 để khớp với Server
                     updateConnectionBadge(isOnlineNow, lastDeviceActiveTime);
                 } else {
                     updateConnectionBadge(false, null);

@@ -98,7 +98,7 @@ app.get('/api/medicines', async (req, res) => {
                 }
             }
 
-            const isOnline = box.lastActive && (new Date() - new Date(box.lastActive) < 70000); // 70s threshold
+            const isOnline = box.lastActive && (new Date() - new Date(box.lastActive) < 15000); // 15s threshold (ESP32 polls every 3s)
             const list = box.compartments.map(comp => ({
                 id: comp._id,
                 compartmentId: comp.id,
