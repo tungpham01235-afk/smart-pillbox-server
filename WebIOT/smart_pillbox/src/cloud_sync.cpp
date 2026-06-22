@@ -12,6 +12,7 @@
 #include "sensor_manager.h"
 #include <WiFi.h>
 #include <HTTPClient.h>
+#include <WiFiClientSecure.h>
 #include <ArduinoJson.h>
 #include <LittleFS.h>
 
@@ -69,8 +70,10 @@ bool CloudSync_SendLog(int compartmentId, const String& status) {
     return false;
   }
 
+  WiFiClientSecure client;
+  client.setInsecure();
   HTTPClient http;
-  http.begin(String(CLOUD_SERVER_URL) + "/api/logs/sync");
+  http.begin(client, String(CLOUD_SERVER_URL) + "/api/logs/sync");
   http.addHeader("Content-Type", "application/json");
   http.addHeader("x-device-key", CLOUD_DEVICE_KEY);
 
@@ -125,6 +128,8 @@ void CloudSync_ProcessRetryLogs() {
   DynamicJsonDocument failedDoc(4096);
   JsonArray failedArray = failedDoc.to<JsonArray>();
 
+  WiFiClientSecure client;
+  client.setInsecure();
   HTTPClient http;
   bool hasSuccess = false;
 
@@ -132,7 +137,7 @@ void CloudSync_ProcessRetryLogs() {
     int compartmentId = logObj["compartmentId"];
     String status = logObj["status"].as<String>();
 
-    http.begin(String(CLOUD_SERVER_URL) + "/api/logs/sync");
+    http.begin(client, String(CLOUD_SERVER_URL) + "/api/logs/sync");
     http.addHeader("Content-Type", "application/json");
     http.addHeader("x-device-key", CLOUD_DEVICE_KEY);
 
@@ -171,13 +176,15 @@ void CloudSync_PullConfig() {
   if (millis() - _lastConfigPull < CLOUD_SYNC_INTERVAL_MS) return;
   _lastConfigPull = millis();
 
+  WiFiClientSecure client;
+  client.setInsecure();
   HTTPClient http;
   String url = String(CLOUD_SERVER_URL) + "/api/device/config?boxId=" + String(CLOUD_BOX_ID);
   url += "&s1=" + String(SensorManager_GetState(0) == SENSOR_PRESENT ? "true" : "false");
   url += "&s2=" + String(SensorManager_GetState(1) == SENSOR_PRESENT ? "true" : "false");
   url += "&s3=" + String(SensorManager_GetState(2) == SENSOR_PRESENT ? "true" : "false");
   
-  http.begin(url);
+  http.begin(client, url);
   http.addHeader("x-device-key", CLOUD_DEVICE_KEY);
 
   int httpCode = http.GET();

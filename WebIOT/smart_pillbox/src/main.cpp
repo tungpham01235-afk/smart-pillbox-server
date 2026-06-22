@@ -151,7 +151,8 @@ void loop() {
       TimeManager_Init();
       WebServer_Init(server);
       server.begin();
-      DBGLN("[WIFI] NTP + Web Server da khoi dong lai");
+      CloudSync_Init();
+      DBGLN("[WIFI] NTP + Web Server + Cloud Sync da khoi dong lai");
     }
   }
 
