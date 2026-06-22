@@ -7,15 +7,16 @@
 
 #include "time_manager.h"
 #include "config.h"
+#include <NTPClient.h>
 #include <WiFi.h>
 #include <WiFiUdp.h>
-#include <NTPClient.h>
 
 // ════════════════════════════════════════
 // Bien noi bo (static)
 // ════════════════════════════════════════
 static WiFiUDP ntpUDP;
-static NTPClient timeClient(ntpUDP, NTP_SERVER, UTC_OFFSET_SEC, NTP_UPDATE_INTERVAL_MS);
+static NTPClient timeClient(ntpUDP, NTP_SERVER, UTC_OFFSET_SEC,
+                            NTP_UPDATE_INTERVAL_MS);
 static bool _timeValid = false;
 static unsigned long _lastNtpUpdate = 0;
 
@@ -35,7 +36,7 @@ bool TimeManager_Init() {
       return true;
     }
     DBG(".");
-    delay(2000);  // Chap nhan delay trong Init (chi chay 1 lan)
+    delay(2000); // Chap nhan delay trong Init (chi chay 1 lan)
   }
 
   _timeValid = false;
@@ -56,27 +57,21 @@ void TimeManager_Update() {
 // ════════════════════════════════════════
 // TimeManager_IsTimeValid
 // ════════════════════════════════════════
-bool TimeManager_IsTimeValid() {
-  return _timeValid;
-}
+bool TimeManager_IsTimeValid() { return _timeValid; }
 
 // ════════════════════════════════════════
 // TimeManager_GetHour / GetMinute
 // ════════════════════════════════════════
-int TimeManager_GetHour() {
-  return timeClient.getHours();
-}
+int TimeManager_GetHour() { return timeClient.getHours(); }
 
-int TimeManager_GetMinute() {
-  return timeClient.getMinutes();
-}
+int TimeManager_GetMinute() { return timeClient.getMinutes(); }
 
 // ════════════════════════════════════════
 // TimeManager_GetTimeString — "HH:MM:SS"
 // ════════════════════════════════════════
 String TimeManager_GetTimeString() {
   unsigned long epochTime = timeClient.getEpochTime();
-  int hours   = (epochTime % 86400UL) / 3600;
+  int hours = (epochTime % 86400UL) / 3600;
   int minutes = (epochTime % 3600) / 60;
   int seconds = epochTime % 60;
 
@@ -98,16 +93,11 @@ String TimeManager_GetHMString() {
 String TimeManager_GetDateTimeString() {
   unsigned long epochTime = timeClient.getEpochTime();
   time_t rawTime = (time_t)epochTime;
-  struct tm* ti = gmtime(&rawTime);
+  struct tm *ti = gmtime(&rawTime);
 
   char buf[24];
-  sprintf(buf, "%04d-%02d-%02d %02d:%02d:%02d",
-          ti->tm_year + 1900,
-          ti->tm_mon + 1,
-          ti->tm_mday,
-          ti->tm_hour,
-          ti->tm_min,
-          ti->tm_sec);
+  sprintf(buf, "%04d-%02d-%02d %02d:%02d:%02d", ti->tm_year + 1900,
+          ti->tm_mon + 1, ti->tm_mday, ti->tm_hour, ti->tm_min, ti->tm_sec);
   return String(buf);
 }
 
@@ -115,17 +105,20 @@ String TimeManager_GetDateTimeString() {
 // TimeManager_IsWithinAlarmWindow
 // Kiem tra thoi gian hien tai co nam trong cua so bao dong
 // ════════════════════════════════════════
-bool TimeManager_IsWithinAlarmWindow(const String& scheduleTime, int windowMinutes) {
-  if (!_timeValid) return false;
+bool TimeManager_IsWithinAlarmWindow(const String &scheduleTime,
+                                     int windowMinutes) {
+  if (!_timeValid)
+    return false;
 
   // Parse scheduleTime "HH:MM"
   int colonIdx = scheduleTime.indexOf(':');
-  if (colonIdx < 0) return false;
+  if (colonIdx < 0)
+    return false;
 
   int schedHour = scheduleTime.substring(0, colonIdx).toInt();
-  int schedMin  = scheduleTime.substring(colonIdx + 1).toInt();
+  int schedMin = scheduleTime.substring(colonIdx + 1).toInt();
   int schedTotalMin = schedHour * 60 + schedMin;
-  int nowTotalMin   = TimeManager_GetHour() * 60 + TimeManager_GetMinute();
+  int nowTotalMin = TimeManager_GetHour() * 60 + TimeManager_GetMinute();
 
   int windowEnd = schedTotalMin + windowMinutes;
 

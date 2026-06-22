@@ -93,9 +93,7 @@ static const char *DEFAULT_MEAL_NOTE[3] = {"Sau khi an", "Sau khi an",
 // ════════════════════════════════════════
 // H. Cloud Sync Configuration
 // ════════════════════════════════════════
-#define CLOUD_SERVER_URL                                                       \
-  "https://smart-pillbox-server-production.up.railway.app" // URL của Web Server
-                                                           // chạy trên Railway
+#define CLOUD_SERVER_URL "https://smart-pillbox-server-production.up.railway.app" // URL của Web Server chạy trên Railway
 #define CLOUD_DEVICE_KEY "SmartPillboxSecretKey2026"
 #define CLOUD_BOX_ID "box_01"            // ID thiết bị này để khớp với DB
 #define CLOUD_SYNC_INTERVAL_MS 30000UL   // Định kỳ kéo cấu hình mỗi 30s
