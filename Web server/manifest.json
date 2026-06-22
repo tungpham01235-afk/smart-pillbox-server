@@ -1,0 +1,44 @@
+{
+  "name": "Smart Pillbox",
+  "short_name": "Pillbox",
+  "description": "Ứng dụng quản lý tủ thuốc thông minh - Theo dõi lịch uống thuốc, nhận thông báo cữ thuốc và kiểm soát tủ thuốc từ xa.",
+  "start_url": "/dashboard.html",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#1e1b4b",
+  "theme_color": "#4f46e5",
+  "orientation": "portrait-primary",
+  "lang": "vi",
+  "categories": ["health", "medical", "utilities"],
+  "icons": [
+    {
+      "src": "/icon.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Dashboard",
+      "short_name": "Dashboard",
+      "description": "Xem trạng thái 3 ngăn tủ thuốc",
+      "url": "/dashboard.html",
+      "icons": [{ "src": "/icon.png", "sizes": "192x192" }]
+    }
+  ],
+  "screenshots": [],
+  "prefer_related_applications": false
+}

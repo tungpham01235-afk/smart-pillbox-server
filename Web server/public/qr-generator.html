@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Pillbox - Trình tạo mã QR thiết bị</title>
+
+    <!-- Google Fonts & Tailwind-like CSS variables -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Inter:wght@300;400;500;600;700&display=swap"
+        rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
+
+    <style>
+        :root {
+            --bg: #09090b;
+            --card-bg: rgba(20, 20, 25, 0.6);
+            --primary: #6366f1;
+            --primary-hover: #4f46e5;
+            --text: #f4f4f5;
+            --text-muted: #a1a1aa;
+            --border: rgba(255, 255, 255, 0.08);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow-x: hidden;
+            padding: 40px 20px;
+        }
+
+        .bg-glow {
+            position: absolute;
+            width: 600px;
+            height: 600px;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(99, 102, 241, 0.1) 0%, rgba(0, 0, 0, 0) 70%);
+            top: 10%;
+            left: 20%;
+            z-index: -1;
+            filter: blur(80px);
+        }
+
+        .container {
+            width: 100%;
+            max-width: 900px;
+            display: grid;
+            grid-template-columns: 1.1fr 0.9fr;
+            gap: 40px;
+            z-index: 10;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Form styling */
+        .settings-card {
+            background: var(--card-bg);
+            backdrop-filter: blur(20px);
+            border: 1px solid var(--border);
+            padding: 30px;
+            border-radius: 24px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        h1 {
+            font-family: 'Outfit', sans-serif;
+            font-size: 1.8rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, #ffffff 40%, #a5b4fc 100%);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        p.desc {
+            color: var(--text-muted);
+            font-size: 0.9rem;
+            line-height: 1.5;
+            margin-top: -10px;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        label {
+            font-weight: 500;
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            letter-spacing: 0.5px;
+        }
+
+        input {
+            padding: 12px 16px;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1.5px solid var(--border);
+            border-radius: 12px;
+            color: var(--text);
+            font-size: 0.95rem;
+            transition: all 0.3s ease;
+        }
+
+        input:focus {
+            border-color: var(--primary);
+            background: rgba(255, 255, 255, 0.05);
+            outline: none;
+            box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.2);
+        }
+
+        .actions {
+            display: flex;
+            gap: 12px;
+            margin-top: 10px;
+        }
+
+        .btn {
+            flex: 1;
+            padding: 12px 18px;
+            border-radius: 12px;
+            font-weight: 600;
+            font-size: 0.95rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-align: center;
+            text-decoration: none;
+            border: none;
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.2);
+        }
+
+        .btn-primary:hover {
+            background: var(--primary-hover);
+            transform: translateY(-2px);
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--text);
+            border: 1px solid var(--border);
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        /* Label badge template */
+        .preview-pane {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: rgba(255, 255, 255, 0.02);
+            border: 2px dashed rgba(255, 255, 255, 0.1);
+            border-radius: 24px;
+            padding: 30px;
+        }
+
+        .pillbox-badge {
+            background: white;
+            color: #1e1b4b;
+            padding: 24px;
+            border-radius: 16px;
+            width: 280px;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.3);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            border: 4px solid #4f46e5;
+            position: relative;
+            box-sizing: border-box;
+        }
+
+        .badge-header {
+            text-align: center;
+            margin-bottom: 12px;
+            width: 100%;
+        }
+
+        .badge-brand {
+            font-family: 'Outfit', sans-serif;
+            font-size: 1.3rem;
+            font-weight: 800;
+            color: #4f46e5;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
+
+        .badge-sub {
+            font-size: 0.65rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #6b7280;
+            font-weight: 600;
+            margin-top: 2px;
+        }
+
+        .badge-qr-container {
+            background: #ffffff;
+            padding: 8px;
+            border-radius: 10px;
+            border: 1px solid #e5e7eb;
+            margin-bottom: 12px;
+            display: inline-block;
+        }
+
+        .badge-info {
+            text-align: center;
+            width: 100%;
+            border-top: 1px dashed #e5e7eb;
+            padding-top: 12px;
+        }
+
+        .badge-id {
+            font-family: 'Outfit', sans-serif;
+            font-weight: 700;
+            font-size: 1.1rem;
+            color: #111827;
+        }
+
+        .badge-instruction {
+            font-size: 0.68rem;
+            color: #4b5563;
+            margin-top: 4px;
+            font-weight: 500;
+        }
+
+        .badge-footer {
+            font-size: 0.55rem;
+            color: #9ca3af;
+            margin-top: 10px;
+            text-align: center;
+        }
+
+        /* Print formatting */
+        @media print {
+            body {
+                background: white;
+                color: black;
+                padding: 0;
+                min-height: auto;
+            }
+
+            .bg-glow,
+            .settings-card,
+            .preview-pane h3 {
+                display: none !important;
+            }
+
+            .preview-pane {
+                border: none;
+                padding: 0;
+                background: none;
+            }
+
+            .pillbox-badge {
+                box-shadow: none;
+                border: 4px solid #4f46e5;
+                margin: 0;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="bg-glow"></div>
+
+    <div class="container">
+        <!-- Left: Settings Form -->
+        <div class="settings-card">
+            <div>
+                <h1>Trình Tạo Nhãn Mã QR</h1>
+                <p class="desc mt-2">Dùng để sinh mã QR liên kết nhanh dán trực tiếp lên hộp thuốc thông minh.</p>
+            </div>
+
+            <div class="form-group">
+                <label>Mã thiết bị (Box ID)</label>
+                <input type="text" id="inputBoxId" placeholder="Ví dụ: box_01" value="box_01" oninput="updateBadge()">
+            </div>
+
+            <div class="form-group">
+                <label>Mã tài khoản (User ID - Không bắt buộc)</label>
+                <input type="text" id="inputUserId" placeholder="Ví dụ: 64f8a8bcfc..." oninput="updateBadge()">
+                <span style="font-size: 0.75rem; color: var(--text-muted);">
+                    * Nếu để trống, người dùng khi quét sẽ đăng ký/đăng nhập và tự liên kết.
+                </span>
+            </div>
+
+            <div class="actions">
+                <button class="btn btn-primary" onclick="window.print()">🖨️ In nhãn</button>
+                <button class="btn btn-secondary" onclick="downloadBadgeImage()">💾 Tải ảnh</button>
+            </div>
+        </div>
+
+        <!-- Right: Badge Preview -->
+        <div class="preview-pane">
+            <h3 style="margin-bottom: 20px; font-weight: 600; font-size: 1rem; color: var(--text-muted);">XEM TRƯỚC NHÃN
+                IN</h3>
+
+            <div class="pillbox-badge" id="badgePrintArea">
+                <div class="badge-header">
+                    <div class="badge-brand">
+                        <span>💊</span> Smart Pillbox
+                    </div>
+                    <div class="badge-sub">Tủ thuốc thông minh</div>
+                </div>
+
+                <div class="badge-qr-container">
+                    <canvas id="qrCanvas"></canvas>
+                </div>
+
+                <div class="badge-info">
+                    <div class="badge-id" id="badgeBoxId">BOX_01</div>
+                    <div class="badge-instruction">Quét mã để kích hoạt & tải App</div>
+                </div>
+
+                <div class="badge-footer">
+                    https://smart-pillbox-server-production.up.railway.app
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let qrInstance = null;
+
+        function updateBadge() {
+            let boxId = document.getElementById('inputBoxId').value.trim() || 'TEMPL';
+            boxId = boxId.toLowerCase().replace(/\s+/g, '_');
+            const userId = document.getElementById('inputUserId').value.trim();
+
+            // Cập nhật text hiển thị trên nhãn
+            document.getElementById('badgeBoxId').innerText = boxId.toUpperCase();
+
+            // Xây dựng link
+            const protocol = window.location.protocol;
+            const host = window.location.host;
+            let qrData = `${protocol}//${host}/?boxId=${encodeURIComponent(boxId)}`;
+            if (userId) {
+                qrData += `&userId=${userId}`;
+            }
+
+            // Tạo mã QR bằng Qrious
+            if (!qrInstance) {
+                qrInstance = new QRious({
+                    element: document.getElementById('qrCanvas'),
+                    value: qrData,
+                    size: 160,
+                    backgroundAlpha: 0,
+                    foreground: '#1e1b4b',
+                    level: 'H'
+                });
+            } else {
+                qrInstance.value = qrData;
+            }
+        }
+
+        function downloadBadgeImage() {
+            // Tạo canvas giả lập nhãn in hoàn chỉnh để tải xuống dạng ảnh
+            const badge = document.getElementById('badgePrintArea');
+            const boxId = document.getElementById('inputBoxId').value.trim() || 'smart-pillbox';
+
+            // Vì canvas QR chỉ vẽ QR, nếu muốn tải toàn bộ nhãn thì in ra là lựa chọn tối ưu, 
+            // nhưng ta cũng có thể cho phép tải trực tiếp file QR code độc lập.
+            const canvas = document.getElementById('qrCanvas');
+            const link = document.createElement('a');
+            link.download = `smart-pillbox-qr-${boxId}.png`;
+            link.href = canvas.toDataURL("image/png");
+            link.click();
+        }
+
+        // Khởi chạy ban đầu
+        document.addEventListener('DOMContentLoaded', () => {
+            // Đọc tham số boxId từ URL nếu có
+            const urlParams = new URLSearchParams(window.location.search);
+            const boxIdParam = urlParams.get('boxId');
+            if (boxIdParam) {
+                document.getElementById('inputBoxId').value = boxIdParam;
+            }
+
+            const userIdParam = urlParams.get('userId');
+            if (userIdParam) {
+                document.getElementById('inputUserId').value = userIdParam;
+            }
+
+            updateBadge();
+        });
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,1145 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Smart Pillbox - Dashboard</title>
+    <meta name="description" content="Quản lý tủ thuốc thông minh - Theo dõi lịch uống thuốc và nhận thông báo realtime">
+    <link rel="manifest" href="/manifest.json" crossorigin="use-credentials">
+    <meta name="theme-color" content="#4f46e5">
+    <!-- iOS PWA -->
+    <link rel="apple-touch-icon" href="/icon-512.png">
+    <link rel="apple-touch-icon" sizes="192x192" href="/icon.png">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Smart Pillbox">
+    <!-- Microsoft Tiles -->
+    <meta name="msapplication-TileColor" content="#4f46e5">
+    <meta name="msapplication-TileImage" content="/icon-512.png">
+    
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
+    <style>
+        :root {
+            --primary-color: #4f46e5;
+            --primary-light: #818cf8;
+            --success-color: #10b981;
+            --warning-color: #f59e0b;
+            --danger-color: #ef4444;
+            --dark-color: #1e1b4b;
+        }
+        body { background-color: #f3f4f6; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        .view { display: none; padding-bottom: 80px; }
+        .view.active { display: block; }
+        .nav-bottom { position: fixed; bottom: 0; width: 100%; background: #ffffff; border-top: 1px solid #e5e7eb; display: flex; justify-content: space-around; padding: 12px 0; z-index: 1000; box-shadow: 0 -4px 6px -1px rgba(0, 0, 0, 0.05); }
+        .nav-bottom .nav-link { color: #6b7280; font-size: 24px; padding: 4px 12px; border-radius: 8px; transition: all 0.2s; text-decoration: none; }
+        .nav-bottom .nav-link.active { color: var(--primary-color); background-color: #f3f4f6; }
+        .card { border-radius: 16px; border: none; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); }
+        .bg-gradient-primary { background: linear-gradient(135deg, var(--primary-color), var(--primary-light)); color: white; }
+        .comp-card { transition: transform 0.2s, box-shadow 0.2s; }
+        .comp-card:hover { transform: translateY(-2px); box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); }
+        .toast-container { position: fixed; top: 20px; right: 20px; z-index: 2000; }
+        .toast-custom { background: var(--dark-color); color: white; padding: 14px 20px; border-radius: 12px; margin-bottom: 10px; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.3); animation: slideIn 0.3s; max-width: 320px; }
+        @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+        .status-badge { font-size: 12px; padding: 4px 10px; border-radius: 9999px; font-weight: 600; }
+        .badge-present { background-color: #d1fae5; color: #065f46; }
+        .badge-absent { background-color: #fef3c7; color: #92400e; }
+        .badge-alarming { background-color: #fee2e2; color: #991b1b; animation: pulse 1s infinite alternate; }
+        @keyframes pulse { from { opacity: 0.6; } to { opacity: 1; } }
+
+        /* PWA Install Banner */
+        .pwa-install-banner {
+            display: none;
+            position: fixed;
+            bottom: 80px;
+            left: 16px;
+            right: 16px;
+            background: linear-gradient(135deg, #1e1b4b, #312e81);
+            color: white;
+            border-radius: 16px;
+            padding: 16px 20px;
+            z-index: 1500;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+            border: 1px solid rgba(255,255,255,0.1);
+            animation: slideUp 0.4s ease;
+        }
+        @keyframes slideUp { from { transform: translateY(100px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        .pwa-install-banner.visible { display: flex; align-items: center; gap: 16px; }
+        .pwa-install-banner .pwa-icon { font-size: 32px; flex-shrink: 0; }
+        .pwa-install-banner .pwa-text { flex: 1; }
+        .pwa-install-banner .pwa-text strong { display: block; font-size: 0.95rem; margin-bottom: 2px; }
+        .pwa-install-banner .pwa-text small { color: rgba(255,255,255,0.65); font-size: 0.78rem; }
+        .pwa-install-banner .btn-install { background: #818cf8; color: white; border: none; padding: 10px 18px; border-radius: 10px; font-weight: 700; cursor: pointer; font-size: 0.85rem; white-space: nowrap; }
+        .pwa-install-banner .btn-install:hover { background: #6366f1; }
+        .pwa-install-banner .btn-dismiss { background: transparent; border: none; color: rgba(255,255,255,0.5); cursor: pointer; font-size: 18px; padding: 4px 8px; flex-shrink: 0; }
+
+        /* iOS install hint */
+        .ios-install-hint {
+            display: none;
+            position: fixed;
+            bottom: 80px;
+            left: 16px;
+            right: 16px;
+            background: #1e1b4b;
+            color: white;
+            border-radius: 16px;
+            padding: 16px 20px;
+            z-index: 1500;
+            text-align: center;
+            font-size: 0.85rem;
+            line-height: 1.6;
+            border: 1px solid rgba(255,255,255,0.1);
+            animation: slideUp 0.4s ease;
+        }
+
+        /* Premium Floating Simulator Widget */
+        .simulator-widget {
+            position: fixed;
+            bottom: 85px;
+            right: 20px;
+            width: 380px;
+            background: rgba(15, 12, 41, 0.85); /* Dark gradient bg matching dashboard */
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+            z-index: 1400;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            color: #f4f4f5;
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            border-left: 5px solid #4f46e5 !important;
+            overflow: hidden;
+        }
+        .simulator-header {
+            padding: 12px 20px;
+            background: rgba(255, 255, 255, 0.03);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+        }
+        .simulator-header h6 {
+            margin: 0;
+            font-size: 0.9rem;
+            letter-spacing: 0.5px;
+        }
+        .simulator-body {
+            padding: 18px;
+            max-height: 480px;
+            overflow-y: auto;
+            transition: all 0.3s ease;
+        }
+        .simulator-widget.minimized {
+            width: 220px;
+        }
+        .simulator-widget.minimized .simulator-body {
+            max-height: 0;
+            padding: 0;
+            overflow: hidden;
+            border: none;
+        }
+        
+        .sim-section-title {
+            font-size: 0.82rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            opacity: 0.8;
+            margin-bottom: 8px;
+        }
+        
+        /* Mobile adjustment to fit screens */
+        @media (max-width: 768px) {
+            .simulator-widget {
+                width: calc(100% - 32px);
+                left: 16px;
+                right: 16px;
+                bottom: 85px;
+            }
+            .simulator-widget.minimized {
+                width: 170px;
+                left: auto;
+                right: 16px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="toast-container" class="toast-container"></div>
+
+    <!-- PWA Install Banner (Android/Desktop) -->
+    <div class="pwa-install-banner" id="pwa-install-banner">
+        <div class="pwa-icon">💊</div>
+        <div class="pwa-text">
+            <strong>Cài đặt Smart Pillbox</strong>
+            <small>Dùng như app thực sự - không cần cửa hàng!</small>
+        </div>
+        <button class="btn-install" id="btn-pwa-install" onclick="installPWA()">Cài đặt</button>
+        <button class="btn-dismiss" onclick="dismissInstallBanner()" aria-label="Đóng">✕</button>
+    </div>
+
+    <!-- iOS Install Hint -->
+    <div class="ios-install-hint" id="ios-install-hint">
+        📲 Để cài app: Nhấn nút <strong>Chia sẻ</strong> (□↑) → chọn <strong>"Thêm vào Màn hình chính"</strong>
+        <button onclick="document.getElementById('ios-install-hint').style.display='none'" style="margin-left: 10px; background: rgba(255,255,255,0.2); border: none; color: white; padding: 4px 10px; border-radius: 8px; cursor: pointer;">OK</button>
+    </div>
+
+    <nav class="navbar navbar-dark bg-gradient-primary shadow-sm py-3">
+        <div class="container">
+            <span class="navbar-brand fw-bold d-flex align-items-center">💊 Smart Pillbox Cloud</span>
+            <div id="realtime-clock" class="badge bg-white text-dark fw-bold px-3 py-2 fs-6 shadow-sm">00:00:00</div>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        <!-- VIEW: HOME (STATUS 3 NGĂN) -->
+        <div id="view-home" class="view active">
+            <div class="card bg-gradient-primary p-4 mb-4 shadow">
+                <h4 class="mb-1">Xin chào, <span id="displayUserName">Bạn</span>! 👋</h4>
+                <p class="mb-0 small opacity-90">Hệ thống tủ thuốc thông minh đang hoạt động tốt.</p>
+            </div>
+
+
+            
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="fw-bold mb-0">🕒 Lịch trình & Trạng thái 3 ngăn hôm nay</h5>
+                <span class="text-muted small">Tự động đồng bộ</span>
+            </div>
+            
+            <div id="notification-area"></div>
+            
+            <div class="row" id="today-schedule-list">
+                <!-- 3 Card ngăn sẽ được chèn động bằng JS ở đây -->
+                <div class="text-center p-5 text-muted small">Đang kết nối cơ sở dữ liệu...</div>
+            </div>
+        </div>
+
+        <!-- VIEW: HISTORY LOGS -->
+        <div id="view-history" class="view">
+            <h4 class="mb-3 fw-bold text-dark">📜 Nhật ký lịch sử uống thuốc</h4>
+            <div class="card p-3 shadow-sm mb-4">
+                <ul class="list-group list-group-flush" id="history-list">
+                    <li class="list-group-item text-center text-muted small py-4">Đang tải nhật ký lịch sử...</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- VIEW: CONFIG COMPARTMENTS -->
+        <div id="view-add" class="view">
+            <h4 class="mb-3 fw-bold text-dark">⚙️ Thiết lập 3 ngăn thuốc</h4>
+            
+            <!-- Danh sách 3 khay thuốc để sửa -->
+            <div id="config-compartments-list" class="mb-4">
+                <!-- Chèn động 3 khay thuốc bằng JS -->
+            </div>
+
+            <!-- Form Edit ngăn (Hiện khi bấm Chỉnh sửa) -->
+            <div class="card p-4 shadow-sm" id="edit-form-card" style="display: none;">
+                <h5 class="fw-bold mb-3 text-primary" id="editFormTitle">Chỉnh sửa Ngăn số X</h5>
+                <input type="hidden" id="editCompId">
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Tên thuốc</label>
+                    <input type="text" id="medName" class="form-control" placeholder="Ví dụ: Vitamin C, Thuốc dạ dày...">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Chỉ dẫn dùng</label>
+                    <select id="medCondition" class="form-select">
+                        <option value="Sau ăn">Sau ăn (No bụng)</option>
+                        <option value="Trước ăn">Trước ăn (Đói bụng)</option>
+                        <option value="Trước khi ngủ">Trước khi ngủ</option>
+                        <option value="Khác">Khác</option>
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Giờ uống thuốc</label>
+                    <input type="time" id="medTime" class="form-control">
+                </div>
+                <div class="form-check form-switch mb-4">
+                    <input class="form-check-input" type="checkbox" id="medEnabled" checked>
+                    <label class="form-check-label fw-bold" for="medEnabled">Kích hoạt ngăn này</label>
+                </div>
+                <div class="d-flex gap-2">
+                    <button class="btn btn-primary flex-grow-1 py-2" onclick="saveMedicine()">💾 Lưu cài đặt</button>
+                    <button class="btn btn-secondary py-2" onclick="cancelEdit()">Hủy</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- VIEW: SETTINGS -->
+        <div id="view-settings" class="view">
+            <h4 class="mb-3 fw-bold text-dark">⚙️ Cài đặt tủ thuốc & Tài khoản</h4>
+            <div class="card p-4 shadow-sm">
+                <div class="mb-4">
+                    <label class="form-label fw-bold text-primary">Mã số tủ thuốc liên kết (Box ID)</label>
+                    <input type="text" id="editBoxId" class="form-control border-primary bg-light text-muted" placeholder="Chưa liên kết tủ thuốc" disabled readonly>
+                    <div class="form-text">Mã ID tủ thuốc được bảo mật (Chỉ đọc). Để thay đổi liên kết, vui lòng quét mã QR sản phẩm.</div>
+                </div>
+                <!-- Device QR Code Display Card Section -->
+                <div class="mb-4 text-center" id="qr-code-section" style="display: none;">
+                    <label class="form-label fw-bold text-primary d-block mb-3">Mã QR Thiết Bị (Liên Kết Nhanh)</label>
+                    <div class="d-inline-block p-3 bg-white rounded-4 shadow-sm border mb-3">
+                        <canvas id="device-qr-canvas"></canvas>
+                    </div>
+                    <p class="text-muted small mb-3">Quét mã này trên điện thoại để liên kết tài khoản & cài đặt ứng dụng.</p>
+                    <div class="d-flex gap-2 justify-content-center">
+                        <button class="btn btn-outline-primary btn-sm px-3" onclick="downloadQRCode()">💾 Tải QR xuống</button>
+                        <a href="/qr-generator.html" target="_blank" class="btn btn-outline-secondary btn-sm px-3">🖨️ Tạo nhãn in QR</a>
+                    </div>
+                </div>
+                <hr id="qr-separator" style="display: none;">
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Tên tài khoản</label>
+                    <input type="text" id="editName" class="form-control">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Email nhận thông báo</label>
+                    <input type="email" id="editEmail" class="form-control">
+                </div>
+                
+                <!-- OTP Đổi Email (Ẩn mặc định, hiện khi bắt đầu đổi email) -->
+                <div class="mb-3 border p-3 rounded bg-light" id="email-otp-section" style="display: none;">
+                    <label class="form-label fw-bold text-success">🔑 Xác thực OTP đổi Email</label>
+                    <p class="small text-muted mb-2">Hệ thống đã gửi một mã OTP về email mới của bạn. Vui lòng nhập mã để hoàn tất.</p>
+                    <div class="input-group mb-2">
+                        <input type="text" id="emailOtpInput" class="form-control" placeholder="Nhập mã OTP 6 số" style="text-align: center; letter-spacing: 2px;">
+                        <button class="btn btn-success" type="button" onclick="confirmEmailChange()">Xác nhận</button>
+                    </div>
+                    <div class="d-flex justify-content-between">
+                        <button class="btn btn-link btn-sm text-decoration-none p-0 text-success" type="button" onclick="resendEmailChangeOTP()">Gửi lại OTP</button>
+                        <button class="btn btn-link btn-sm text-decoration-none text-danger p-0" type="button" onclick="cancelEmailChange()">Hủy thay đổi</button>
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Mật khẩu cũ (hiện tại)</label>
+                    <input type="password" id="editOldPassword" class="form-control" placeholder="Nhập nếu muốn đổi mật khẩu mới">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Mật khẩu mới</label>
+                    <input type="password" id="editNewPassword" class="form-control" placeholder="Để trống nếu không đổi">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Xác nhận mật khẩu mới</label>
+                    <input type="password" id="editConfirmPassword" class="form-control" placeholder="Nhập lại mật khẩu mới">
+                </div>
+                <button class="btn btn-primary w-100 mb-3 py-2" onclick="updateProfile()">Cập nhật thông tin</button>
+                <button class="btn btn-outline-danger w-100 py-2" onclick="logout()">Đăng xuất</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bottom Navigation Bar -->
+    <div class="nav-bottom shadow">
+        <button class="btn btn-link nav-link active" id="btn-nav-home" onclick="showView('home')">🏠</button>
+        <button class="btn btn-link nav-link" id="btn-nav-history" onclick="showView('history')">📜</button>
+        <button class="btn btn-link nav-link" id="btn-nav-add" onclick="showView('add')">⚙️</button>
+        <button class="btn btn-link nav-link" id="btn-nav-settings" onclick="showView('settings')">👤</button>
+    </div>
+
+    <script>
+        // --- 1. KIỂM TRA ĐĂNG NHẬP & SERVICE WORKER ---
+        let deferredInstallPrompt = null;
+
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/service-worker.js')
+                .then((reg) => {
+                    console.log('PWA Service Worker đăng ký thành công!');
+                    // Lắng nghe message từ SW (ví dụ: yêu cầu sync logs)
+                    navigator.serviceWorker.addEventListener('message', (event) => {
+                        if (event.data && event.data.type === 'SYNC_LOGS_REQUEST') {
+                            console.log('[SW Message] Đồng bộ logs được yêu cầu...');
+                            loadLogs();
+                        }
+                    });
+                })
+                .catch(err => console.error('Lỗi đăng ký Service Worker:', err));
+        }
+
+        // Bắt sự kiện beforeinstallprompt (Android/Chrome)
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredInstallPrompt = e;
+            // Hiện banner install nếu chưa cài
+            if (!localStorage.getItem('pwa_installed') && !localStorage.getItem('pwa_dismissed')) {
+                setTimeout(() => {
+                    document.getElementById('pwa-install-banner').classList.add('visible');
+                }, 2500);
+            }
+        });
+
+        // Phát hiện iOS Safari để hiện hướng dẫn riêng
+        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+        const isInStandaloneMode = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+        if (isIOS && !isInStandaloneMode && !localStorage.getItem('ios_hint_shown')) {
+            setTimeout(() => {
+                document.getElementById('ios-install-hint').style.display = 'block';
+                localStorage.setItem('ios_hint_shown', '1');
+            }, 3000);
+        }
+
+        window.addEventListener('appinstalled', () => {
+            localStorage.setItem('pwa_installed', '1');
+            dismissInstallBanner();
+            showNotification('✅ App Smart Pillbox đã được cài đặt thành công!');
+        });
+
+        function installPWA() {
+            if (!deferredInstallPrompt) return;
+            deferredInstallPrompt.prompt();
+            deferredInstallPrompt.userChoice.then((result) => {
+                if (result.outcome === 'accepted') {
+                    console.log('[PWA] Người dùng đã cài đặt app');
+                    localStorage.setItem('pwa_installed', '1');
+                } else {
+                    localStorage.setItem('pwa_dismissed', '1');
+                }
+                dismissInstallBanner();
+                deferredInstallPrompt = null;
+            });
+        }
+
+        function dismissInstallBanner() {
+            document.getElementById('pwa-install-banner').classList.remove('visible');
+            localStorage.setItem('pwa_dismissed', '1');
+        }
+
+        const token = localStorage.getItem('token');
+        if (!token) {
+            window.location.href = '/'; 
+        }
+
+        // --- 2. SOCKET IO & CẬP NHẬT REALTIME ---
+        const socket = io();
+        const userId = localStorage.getItem('userId');
+        if (userId) socket.emit('join-room', userId);
+
+        function showNotification(message) {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = 'toast-custom';
+            toast.innerHTML = `<strong>💊 Thông báo từ tủ:</strong><br>${message}`;
+            container.appendChild(toast);
+            setTimeout(() => { toast.remove(); }, 6000);
+        }
+
+        socket.on('new-notification', (data) => {
+            showNotification(data.message);
+            loadMedicines();
+            loadLogs();
+        });
+
+        let cachedCompartments = [];
+        let cachedLogs = [];
+
+        // --- KHỞI TẠO DỮ LIỆU BAN ĐẦU ---
+        document.addEventListener('DOMContentLoaded', async () => {
+            // Tải thông tin từ localStorage trước để hiển thị giao diện nhanh (UX)
+            const userName = localStorage.getItem('userName');
+            if (userName) {
+                document.getElementById('displayUserName').innerText = userName;
+                document.getElementById('editName').value = userName;
+            }
+            
+            const userEmail = localStorage.getItem('userEmail');
+            if (userEmail) {
+                document.getElementById('editEmail').value = userEmail;
+            }
+
+            const savedBoxId = localStorage.getItem('boxId');
+            if (savedBoxId) {
+                document.getElementById('editBoxId').value = savedBoxId;
+                generateDeviceQRCode(savedBoxId);
+            }
+
+            // Tải thông tin mới nhất từ Server để đồng bộ hóa đa thiết bị
+            try {
+                const profileRes = await fetch('/api/auth/profile', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (profileRes.ok) {
+                    const profileData = await profileRes.json();
+                    if (profileData.user) {
+                        localStorage.setItem('userName', profileData.user.name || '');
+                        localStorage.setItem('userEmail', profileData.user.email || '');
+                        
+                        document.getElementById('displayUserName').innerText = profileData.user.name || 'Bạn';
+                        document.getElementById('editName').value = profileData.user.name || '';
+                        document.getElementById('editEmail').value = profileData.user.email || '';
+
+                        const serverBoxId = profileData.user.boxId;
+                        if (serverBoxId) {
+                            const oldBoxId = localStorage.getItem('boxId');
+                            localStorage.setItem('boxId', serverBoxId);
+                            document.getElementById('editBoxId').value = serverBoxId;
+                            generateDeviceQRCode(serverBoxId);
+                            
+                            // Nếu Box ID trên server khác với local thì nạp lại dữ liệu
+                            if (serverBoxId !== oldBoxId) {
+                                loadMedicines();
+                                loadLogs();
+                            }
+                        }
+                    }
+                }
+            } catch (err) {
+                console.error("Lỗi đồng bộ cấu hình từ server:", err);
+            }
+
+            // Kiểm tra xem có yêu cầu liên kết tủ thuốc đang chờ không
+            const pendingBind = localStorage.getItem('pendingBindBoxId');
+            if (pendingBind) {
+                await bindBoxOnServer(pendingBind);
+            } else {
+                await loadMedicines();
+                await loadLogs();
+            }
+        });
+
+        function showView(viewName) {
+            document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+            document.getElementById('view-' + viewName).classList.add('active');
+            
+            document.querySelectorAll('.nav-bottom .nav-link').forEach(btn => btn.classList.remove('active'));
+            document.getElementById('btn-nav-' + (viewName === 'add' ? 'add' : viewName)).classList.add('active');
+
+            if (viewName === 'home') loadMedicines();
+            if (viewName === 'history') loadLogs();
+            if (viewName === 'add') {
+                renderConfigList();
+                cancelEdit();
+            }
+        }
+
+        // --- 3. TẢI CẤU HÌNH 3 NGĂN TỪ SERVER MONGODB ---
+        async function loadMedicines() {
+            try {
+                const boxId = localStorage.getItem('boxId');
+                const url = boxId ? `/api/medicines?boxId=${boxId}` : '/api/medicines';
+                const res = await fetch(url, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (!res.ok) return;
+                cachedCompartments = await res.json();
+                
+                // Cập nhật lại BoxId từ API nếu chưa có
+                if (cachedCompartments[0] && cachedCompartments[0].boxId) {
+                    const loadedBoxId = cachedCompartments[0].boxId;
+                    localStorage.setItem('boxId', loadedBoxId);
+                    document.getElementById('editBoxId').value = loadedBoxId;
+                    generateDeviceQRCode(loadedBoxId);
+                }
+
+                renderDashboardCompartments();
+            } catch (e) {
+                console.error("Lỗi nạp lịch thuốc:", e);
+            }
+        }
+
+        // --- 4. RENDER GIAO DIỆN CHÍNH (3 NGĂN) ---
+        function renderDashboardCompartments() {
+            const container = document.getElementById('today-schedule-list');
+            container.innerHTML = '';
+
+            if (!cachedCompartments || cachedCompartments.length === 0) {
+                container.innerHTML = `
+                    <div class="col-12 text-center py-5 text-muted bg-white rounded-4 shadow-sm">
+                        <h5>Chưa liên kết tủ thuốc!</h5>
+                        <p class="small mb-0">Vui lòng vào tab Cài đặt (Icon👤) để nhập Box ID liên kết.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            // Đảm bảo có đủ 3 ngăn (id 1, 2, 3)
+            const comLabel = ["", "🌅 Ngăn Sáng (Ngăn 1)", "☀️ Ngăn Trưa (Ngăn 2)", "🌙 Ngăn Tối (Ngăn 3)"];
+            const comGrad = ["", "border-warning", "border-info", "border-primary"];
+
+            // Sắp xếp compartments theo id khay thuốc
+            const sortedComps = [...cachedCompartments].sort((a, b) => a.compartmentId - b.compartmentId);
+
+            sortedComps.forEach(comp => {
+                const cId = comp.compartmentId;
+                
+                // Xác định trạng thái uống hôm nay bằng cách quét log ngày hiện tại
+                const isTakenToday = checkIsTakenToday(comp.name);
+
+                let statusText = "Chưa uống";
+                let badgeClass = "badge-absent";
+                if (!comp.active) {
+                    statusText = "Chưa kích hoạt";
+                    badgeClass = "bg-secondary text-white";
+                } else if (isTakenToday) {
+                    statusText = "Đã uống thuốc";
+                    badgeClass = "badge-present";
+                }
+
+                // Trạng thái cảm biến khay thuốc vật lý
+                let presenceText = comp.isMedicinePresent ? "✓ Có thuốc" : "📤 Khay trống";
+                let presenceClass = comp.isMedicinePresent ? "badge-present" : "badge-absent";
+                if (!comp.active) {
+                    presenceText = "Tắt ngăn";
+                    presenceClass = "bg-light text-muted";
+                }
+
+                const col = document.createElement('div');
+                col.className = 'col-md-4 mb-3';
+                col.innerHTML = `
+                    <div class="card h-100 border-start border-5 ${comGrad[cId]} comp-card p-3 shadow-sm bg-white">
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <span class="fw-bold text-muted small">${comLabel[cId]}</span>
+                            <div class="d-flex flex-column align-items-end gap-1">
+                                <span class="status-badge ${badgeClass}">${statusText}</span>
+                                <span class="status-badge ${presenceClass}" style="font-size: 10px; padding: 2px 8px;">${presenceText}</span>
+                            </div>
+                        </div>
+                        <h5 class="fw-bold text-dark mt-1 mb-1">${comp.name || 'Trống'}</h5>
+                        <div class="text-muted small mt-2">
+                            <p class="mb-1">⏰ Giờ báo: <b>${comp.time || '--:--'}</b></p>
+                            <p class="mb-0">💡 Ghi chú: <b>${comp.condition || '--'}</b></p>
+                        </div>
+                    </div>
+                `;
+                container.appendChild(col);
+            });
+        }
+
+        // Hàm check log uống thuốc ngày hôm nay
+        function checkIsTakenToday(medicineName) {
+            if (!medicineName) return false;
+            const todayStr = new Date().toLocaleDateString('vi-VN');
+            
+            return cachedLogs.some(log => {
+                const logDate = new Date(log.timeLog).toLocaleDateString('vi-VN');
+                return logDate === todayStr && 
+                       log.medicineName.toLowerCase() === medicineName.toLowerCase() && 
+                       (log.status === 'Đúng giờ' || log.status === 'Đã uống');
+            });
+        }
+
+        // --- 5. TẢI NHẬT KÝ LOGS DỰA THEO BOXID ---
+        async function loadLogs() {
+            const boxId = localStorage.getItem('boxId');
+            if (!boxId) return;
+
+            try {
+                const res = await fetch(`/api/logs/${boxId}`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (!res.ok) return;
+                cachedLogs = await res.json();
+                
+                const list = document.getElementById('history-list');
+                list.innerHTML = '';
+                
+                if (!cachedLogs || cachedLogs.length === 0) {
+                    list.innerHTML = '<li class="list-group-item text-center text-muted small py-4">Chưa có nhật ký hoạt động.</li>';
+                    return;
+                }
+
+                cachedLogs.forEach(log => {
+                    const li = document.createElement('li');
+                    li.className = 'list-group-item d-flex justify-content-between align-items-center px-0 py-3';
+                    
+                    const timeStr = new Date(log.timeLog).toLocaleString('vi-VN', {
+                        day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit'
+                    });
+
+                    let badgeColor = 'bg-secondary';
+                    if (log.status === 'Đúng giờ' || log.status === 'Đã uống') badgeColor = 'bg-success';
+                    if (log.status === 'Quá giờ' || log.status === 'Chưa uống') badgeColor = 'bg-danger';
+                    if (log.status === 'Mở tủ sai') badgeColor = 'bg-warning text-dark';
+
+                    li.innerHTML = `
+                        <div>
+                            <strong class="text-dark">${log.medicineName}</strong>
+                            <br><small class="text-muted">${log.note || 'Tác động ngăn'}</small>
+                        </div>
+                        <div class="text-end">
+                            <span class="badge ${badgeColor} d-inline-block mb-1">${log.status}</span>
+                            <span class="text-muted small d-block">${timeStr}</span>
+                        </div>
+                    `;
+                    list.appendChild(li);
+                });
+
+                // Cập nhật lại giao diện chính sau khi nạp logs để so khớp status
+                renderDashboardCompartments();
+            } catch (e) {
+                console.error("Lỗi nạp logs:", e);
+            }
+        }
+
+        // --- 6. RENDER DANH SÁCH 3 NGĂN ĐỂ CẤU HÌNH ---
+        function renderConfigList() {
+            const listContainer = document.getElementById('config-compartments-list');
+            listContainer.innerHTML = '';
+
+            const comLabel = ["", "🌅 Ngăn Sáng (Ngăn 1)", "☀️ Ngăn Trưa (Ngăn 2)", "🌙 Ngăn Tối (Ngăn 3)"];
+            const sortedComps = [...cachedCompartments].sort((a, b) => a.compartmentId - b.compartmentId);
+
+            sortedComps.forEach(comp => {
+                const card = document.createElement('div');
+                card.className = 'card p-3 mb-2 shadow-sm bg-white d-flex flex-row justify-content-between align-items-center';
+                card.innerHTML = `
+                    <div>
+                        <h6 class="fw-bold text-primary mb-1">${comLabel[comp.compartmentId]}</h6>
+                        <span class="fw-bold text-dark fs-5">${comp.name || 'Chưa thiết lập'}</span>
+                        <div class="text-muted small mt-1">
+                            ⏰ Giờ: <b>${comp.time || '--:--'}</b> | Chỉ dẫn: <b>${comp.condition || '--'}</b> | Trạng thái: 
+                            <span class="badge ${comp.active ? 'bg-success' : 'bg-secondary'}">${comp.active ? 'Bật' : 'Tắt'}</span>
+                        </div>
+                    </div>
+                    <button class="btn btn-primary btn-sm px-3" onclick="startEdit(${comp.compartmentId})">⚙️ Sửa</button>
+                `;
+                listContainer.appendChild(card);
+            });
+        }
+
+        // --- 7. LOGIC EDIT NGĂN THUỐC ---
+        function startEdit(compId) {
+            const comp = cachedCompartments.find(c => c.compartmentId === compId);
+            if (!comp) return;
+
+            document.getElementById('editCompId').value = compId;
+            document.getElementById('medName').value = comp.name || '';
+            document.getElementById('medCondition').value = comp.condition || 'Sau ăn';
+            document.getElementById('medTime').value = comp.time || '';
+            document.getElementById('medEnabled').checked = comp.active;
+
+            const comLabel = ["", "Ngăn Sáng (Ngăn 1)", "Ngăn Trưa (Ngăn 2)", "Ngăn Tối (Ngăn 3)"];
+            document.getElementById('editFormTitle').innerText = `⚙️ Cấu hình ${comLabel[compId]}`;
+
+            document.getElementById('edit-form-card').style.display = 'block';
+            document.getElementById('edit-form-card').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function cancelEdit() {
+            document.getElementById('edit-form-card').style.display = 'none';
+        }
+
+        async function saveMedicine() {
+            const boxId = localStorage.getItem('boxId');
+            const compartmentId = document.getElementById('editCompId').value;
+            const name = document.getElementById('medName').value;
+            const condition = document.getElementById('medCondition').value;
+            const time = document.getElementById('medTime').value;
+            const enabled = document.getElementById('medEnabled').checked;
+
+            if (!time) return showNotification("Vui lòng nhập giờ uống thuốc!");
+
+            try {
+                const res = await fetch('/api/medicines', {
+                    method: 'POST',
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({ boxId, compartmentId, name, condition, time, enabled })
+                });
+                
+                const result = await res.json();
+                
+                if (res.ok) {
+                    showNotification(`Đã lưu cấu hình ngăn ${compartmentId} thành công!`);
+                    cancelEdit();
+                    await loadMedicines();
+                    renderConfigList();
+                    showView('home');
+                } else {
+                    showNotification(result.message || "Lỗi lưu cấu hình khay.");
+                }
+            } catch (e) {
+                showNotification("Lỗi kết nối với Server trung tâm!");
+            }
+        }
+
+        // --- 8. LOGIC TÀI KHOẢN & LIÊN KẾT ---
+        async function updateProfile() {
+            const name = document.getElementById('editName').value;
+            const newEmail = document.getElementById('editEmail').value.trim();
+            const oldPassword = document.getElementById('editOldPassword').value;
+            const newPassword = document.getElementById('editNewPassword').value;
+            const confirmPassword = document.getElementById('editConfirmPassword').value;
+
+            const currentEmail = localStorage.getItem('userEmail');
+            const currentName = localStorage.getItem('userName');
+
+            let infoUpdated = false;
+
+            // 1. Kiểm tra nếu có thay đổi tên hoặc mật khẩu
+            const isNameChanged = name && name !== currentName;
+            const isPasswordEntered = newPassword || oldPassword || confirmPassword;
+
+            if (isNameChanged || isPasswordEntered) {
+                const payload = { name };
+
+                if (isPasswordEntered) {
+                    if (!oldPassword) {
+                        return showNotification("⚠️ Vui lòng nhập mật khẩu cũ để thực hiện đổi mật khẩu!");
+                    }
+                    if (!newPassword) {
+                        return showNotification("⚠️ Vui lòng nhập mật khẩu mới!");
+                    }
+                    if (newPassword.length < 5) {
+                        return showNotification("⚠️ Mật khẩu mới phải từ 5 ký tự trở lên!");
+                    }
+                    if (newPassword !== confirmPassword) {
+                        return showNotification("⚠️ Xác nhận mật khẩu mới không khớp!");
+                    }
+                    payload.password = newPassword;
+                    payload.oldPassword = oldPassword;
+                }
+
+                try {
+                    const res = await fetch('/api/auth/profile', {
+                        method: 'PUT',
+                        headers: { 
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${token}` 
+                        },
+                        body: JSON.stringify(payload)
+                    });
+                    const data = await res.json();
+                    if (!res.ok) {
+                        return showNotification(`❌ ${data.message || 'Lỗi cập nhật thông tin'}`);
+                    }
+                    
+                    // Cập nhật thông tin thành công vào local
+                    localStorage.setItem('userName', data.user.name);
+                    document.getElementById('displayUserName').innerText = data.user.name;
+                    // Reset các ô nhập mật khẩu
+                    document.getElementById('editOldPassword').value = '';
+                    document.getElementById('editNewPassword').value = '';
+                    document.getElementById('editConfirmPassword').value = '';
+
+                    infoUpdated = true;
+                    showNotification("✅ Đã cập nhật Tên/Mật khẩu thành công!");
+                } catch (e) {
+                    return showNotification("❌ Lỗi kết nối server cập nhật thông tin.");
+                }
+            }
+
+            // 2. Kiểm tra nếu có thay đổi Email
+            if (newEmail && newEmail !== currentEmail) {
+                try {
+                    showNotification("🔄 Đang gửi mã OTP đến email mới...");
+                    const res = await fetch('/api/auth/profile/request-email-change', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${token}`
+                        },
+                        body: JSON.stringify({ newEmail })
+                    });
+                    const data = await res.json();
+                    if (res.ok) {
+                        showNotification("📩 Đã gửi mã OTP. Vui lòng kiểm tra email mới!");
+                        document.getElementById('email-otp-section').style.display = 'block';
+                        document.getElementById('emailOtpInput').value = '';
+                        document.getElementById('emailOtpInput').focus();
+                        // Disable ô nhập email tạm thời
+                        document.getElementById('editEmail').disabled = true;
+                    } else {
+                        showNotification(`❌ ${data.message}`);
+                    }
+                } catch (err) {
+                    showNotification("❌ Lỗi kết nối gửi OTP đổi email.");
+                }
+            } else if (infoUpdated && (!newEmail || newEmail === currentEmail)) {
+                // Chỉ đổi tên/mật khẩu mà không đổi email, tự động reload sau 1s
+                setTimeout(() => location.reload(), 1000);
+            } else if (!isNameChanged && !isPasswordEntered && newEmail === currentEmail) {
+                showNotification("ℹ️ Bạn không thay đổi thông tin nào.");
+            }
+        }
+
+        // --- CÁC HÀM HỖ TRỢ XÁC THỰC EMAIL MỚI ---
+        async function confirmEmailChange() {
+            const otp = document.getElementById('emailOtpInput').value.trim();
+            const newEmail = document.getElementById('editEmail').value.trim();
+            if (!otp) return showNotification("⚠️ Vui lòng nhập mã OTP!");
+
+            try {
+                showNotification("🔄 Đang xác thực OTP...");
+                const res = await fetch('/api/auth/profile/verify-email-change', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({ otp })
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    showNotification("✅ Đổi địa chỉ email thành công!");
+                    localStorage.setItem('userEmail', data.user.email);
+                    document.getElementById('email-otp-section').style.display = 'none';
+                    document.getElementById('editEmail').disabled = false;
+                    setTimeout(() => location.reload(), 1000);
+                } else {
+                    showNotification(`❌ ${data.message}`);
+                }
+            } catch (err) {
+                showNotification("❌ Lỗi kết nối xác thực OTP.");
+            }
+        }
+
+        async function resendEmailChangeOTP() {
+            const newEmail = document.getElementById('editEmail').value.trim();
+            if (!newEmail) return showNotification("⚠️ Lỗi: Không tìm thấy email mới.");
+            
+            try {
+                showNotification("🔄 Đang gửi lại mã OTP...");
+                const res = await fetch('/api/auth/profile/request-email-change', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({ newEmail })
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    showNotification("📩 Đã gửi mã OTP mới. Vui lòng kiểm tra email của bạn!");
+                } else {
+                    showNotification(`❌ ${data.message}`);
+                }
+            } catch (err) {
+                showNotification("❌ Lỗi kết nối gửi lại OTP.");
+            }
+        }
+
+        function cancelEmailChange() {
+            document.getElementById('editEmail').value = localStorage.getItem('userEmail');
+            document.getElementById('editEmail').disabled = false;
+            document.getElementById('email-otp-section').style.display = 'none';
+            showNotification("ℹ️ Đã hủy quá trình đổi email.");
+        }
+
+        function logout() {
+            if(confirm("Bạn có chắc chắn muốn đăng xuất?")) {
+                localStorage.removeItem('token');
+                localStorage.removeItem('userId');
+                localStorage.removeItem('boxId');
+                window.location.href = '/'; 
+            }
+        }
+
+        // --- CÁC HÀM HỖ TRỢ LIÊN KẾT & MÃ QR ---
+        async function bindBoxOnServer(boxId) {
+            try {
+                const res = await fetch('/api/box/bind', {
+                    method: 'POST',
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({ boxId })
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    showNotification(`✅ ${data.message || 'Đã liên kết hộp thuốc thành công!'}`);
+                    localStorage.removeItem('pendingBindBoxId');
+                    localStorage.setItem('boxId', boxId);
+                    document.getElementById('editBoxId').value = boxId;
+                    generateDeviceQRCode(boxId);
+                    loadMedicines();
+                    loadLogs();
+                } else {
+                    showNotification(`⚠️ Lỗi liên kết: ${data.message}`);
+                    localStorage.removeItem('pendingBindBoxId');
+                }
+            } catch (err) {
+                console.error("Lỗi kết nối khi liên kết thiết bị:", err);
+                showNotification("Lỗi kết nối khi liên kết thiết bị.");
+            }
+        }
+
+        function generateDeviceQRCode(boxId) {
+            const userId = localStorage.getItem('userId') || '';
+            if (!boxId) {
+                document.getElementById('qr-code-section').style.display = 'none';
+                document.getElementById('qr-separator').style.display = 'none';
+                return;
+            }
+
+            document.getElementById('qr-code-section').style.display = 'block';
+            document.getElementById('qr-separator').style.display = 'block';
+
+            // Tạo link chứa boxId và userId
+            const protocol = window.location.protocol;
+            const host = window.location.host;
+            const qrData = `${protocol}//${host}/?boxId=${boxId}&userId=${userId}`;
+
+            // Sinh mã QR lên canvas
+            try {
+                new QRious({
+                    element: document.getElementById('device-qr-canvas'),
+                    value: qrData,
+                    size: 180,
+                    backgroundAlpha: 0,
+                    foreground: '#4f46e5',
+                    level: 'H'
+                });
+            } catch (err) {
+                console.error("Lỗi tạo mã QR:", err);
+            }
+        }
+
+        function downloadQRCode() {
+            const canvas = document.getElementById('device-qr-canvas');
+            if (!canvas) return;
+            const boxId = localStorage.getItem('boxId') || 'smart-pillbox';
+            const link = document.createElement('a');
+            link.download = `smart-pillbox-qr-${boxId}.png`;
+            link.href = canvas.toDataURL("image/png");
+            link.click();
+        }
+
+        async function triggerSimulateSensor() {
+            const boxId = localStorage.getItem('boxId');
+            if (!boxId) {
+                showNotification("⚠️ Bạn chưa liên kết tủ thuốc! Hãy liên kết tủ thuốc trước.");
+                return;
+            }
+            const compartmentId = document.getElementById('sim-sensor-compartment').value;
+            const status = document.getElementById('sim-sensor-state').value;
+
+            try {
+                showNotification("🔄 Đang gửi tín hiệu cảm biến vật lý...");
+                const res = await fetch(`/api/box/${boxId}/test-alarm`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({ compartmentId, status })
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    showNotification(`✅ ${data.message}`);
+                    await loadMedicines(); // Load lại trạng thái 3 ngăn ngay
+                } else {
+                    showNotification(`❌ Lỗi: ${data.message || 'Không thể gửi test'}`);
+                }
+            } catch (err) {
+                console.error("Lỗi cập nhật cảm biến:", err);
+                showNotification("❌ Lỗi kết nối máy chủ.");
+            }
+        }
+
+        async function triggerSimulateAlarm() {
+            const boxId = localStorage.getItem('boxId');
+            if (!boxId) {
+                showNotification("⚠️ Bạn chưa liên kết tủ thuốc! Hãy liên kết tủ thuốc trước.");
+                return;
+            }
+            const compartmentId = document.getElementById('sim-alarm-compartment').value;
+            const status = document.getElementById('sim-alarm-status').value;
+
+            try {
+                showNotification("🔄 Đang kích hoạt chuông báo & gửi email...");
+                const res = await fetch(`/api/box/${boxId}/test-alarm`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({ compartmentId, status })
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    showNotification(`✅ ${data.message}`);
+                    await loadLogs(); // Load lại log để hiển thị log mới ngay và cập nhật UI
+                } else {
+                    showNotification(`❌ Lỗi: ${data.message || 'Không thể gửi test'}`);
+                }
+            } catch (err) {
+                console.error("Lỗi kích hoạt báo động:", err);
+                showNotification("❌ Lỗi kết nối máy chủ.");
+            }
+        }
+
+        setInterval(() => {
+            document.getElementById('realtime-clock').innerText = new Date().toLocaleTimeString('vi-VN');
+        }, 1000);
+
+        function toggleSimulator() {
+            const widget = document.getElementById('simulator-widget');
+            const btn = document.getElementById('simulator-toggle-btn');
+            if (widget.classList.contains('minimized')) {
+                widget.classList.remove('minimized');
+                btn.innerText = '➖';
+            } else {
+                widget.classList.add('minimized');
+                btn.innerText = '➕';
+            }
+        }
+    </script>
+
+    <!-- Bảng điều khiển giả lập nổi (Floating Simulator Widget) -->
+    <div class="simulator-widget" id="simulator-widget">
+        <div class="simulator-header" onclick="toggleSimulator()">
+            <h6 class="fw-bold m-0"><span class="me-1">🛠️</span> GIẢ LẬP ESP32 CHIP</h6>
+            <span id="simulator-toggle-btn" class="small fw-bold">➖</span>
+        </div>
+        <div class="simulator-body">
+            <!-- BỘ GIẢ LẬP 1: CẢM BIẾN VẬT LÝ -->
+            <div class="mb-3 pb-3 border-bottom border-light border-opacity-10">
+                <span class="sim-section-title text-primary fw-bold d-block" style="font-size: 0.8rem; margin-bottom: 4px;">1. Cảm biến Khay thuốc</span>
+                <p class="text-muted" style="font-size: 0.72rem; margin-bottom: 8px;">Mô phỏng đặt/nhấc hộp thuốc (không gửi email)</p>
+                <div class="row g-2">
+                    <div class="col-6">
+                        <select id="sim-sensor-compartment" class="form-select form-select-sm bg-dark text-white border-secondary">
+                            <option value="1">Ngăn Sáng (Khay 1)</option>
+                            <option value="2">Ngăn Trưa (Khay 2)</option>
+                            <option value="3">Ngăn Tối (Khay 3)</option>
+                        </select>
+                    </div>
+                    <div class="col-6">
+                        <select id="sim-sensor-state" class="form-select form-select-sm bg-dark text-white border-secondary">
+                            <option value="CoThuoc">✓ Có thuốc</option>
+                            <option value="KhayTrong">📤 Khay trống</option>
+                        </select>
+                    </div>
+                    <div class="col-12 mt-2">
+                        <button class="btn btn-primary btn-sm w-100 fw-bold" onclick="triggerSimulateSensor()">
+                            🔄 Cập nhật cảm biến
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- BỘ GIẢ LẬP 2: BÁO ĐỘNG & EMAIL -->
+            <div>
+                <span class="sim-section-title text-danger fw-bold d-block" style="font-size: 0.8rem; margin-bottom: 4px;">2. Báo thức & Cảnh báo</span>
+                <p class="text-muted" style="font-size: 0.72rem; margin-bottom: 8px;">Mô phỏng cữ uống (ghi log + gửi mail báo động)</p>
+                <div class="row g-2">
+                    <div class="col-6">
+                        <select id="sim-alarm-compartment" class="form-select form-select-sm bg-dark text-white border-secondary">
+                            <option value="1">Ngăn Sáng (Khay 1)</option>
+                            <option value="2">Ngăn Trưa (Khay 2)</option>
+                            <option value="3">Ngăn Tối (Khay 3)</option>
+                        </select>
+                    </div>
+                    <div class="col-6">
+                        <select id="sim-alarm-status" class="form-select form-select-sm bg-dark text-white border-secondary">
+                            <option value="Chưa uống">🚨 Chưa uống (Trễ cữ)</option>
+                            <option value="Mở tủ sai">⚠️ Mở tủ sai / Sai cữ</option>
+                            <option value="Đã uống">✅ Đã uống (Đúng giờ)</option>
+                        </select>
+                    </div>
+                    <div class="col-12 mt-2">
+                        <button class="btn btn-danger btn-sm w-100 fw-bold" onclick="triggerSimulateAlarm()">
+                            ⚡ Kích hoạt Cảnh báo
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
