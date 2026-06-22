@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tủ Thuốc Thông Minh</title>
+  <link rel="stylesheet" href="style.css">
+  <!-- Su dung Google Fonts: Roboto -->
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+</head>
+<body>
+
+  <!-- ════════════════════════════ HEADER ════════════════════════════ -->
+  <header>
+    <h1>Tủ Thuốc Thông Minh</h1>
+    <div id="clock-display">--:--:--</div>
+    <div class="system-status">
+      <span id="ntp-status">↻ Đang đồng bộ...</span>
+      <span>|</span>
+      <span>Wi-Fi RSSI: <span id="wifi-rssi">--</span></span>
+    </div>
+  </header>
+
+  <!-- ════════════════════════════ TAB BAR ════════════════════════════ -->
+  <div class="tab-bar">
+    <button class="tab-btn active" data-tab="dashboard">💊 Bảng Điều Khiển</button>
+    <button class="tab-btn" data-tab="config">⚙️ Cài Đặt</button>
+    <button class="tab-btn" data-tab="logs">📋 Nhật Ký</button>
+  </div>
+
+  <div class="container">
+
+    <!-- ════════════════════════════ TAB: DASHBOARD ════════════════════════════ -->
+    <div id="tab-dashboard" class="tab-content active">
+      <div class="cards-grid">
+        
+        <!-- Ngan 1 -->
+        <div class="compartment-card" data-id="1">
+          <div class="card-header">
+            <div class="medicine-name">Đang tải...</div>
+            <div class="schedule-time">--:--</div>
+          </div>
+          <div class="meal-note">...</div>
+          <div class="status-badge badge-present">Đang tải...</div>
+          <button class="test-btn">🔔 Test Báo Động</button>
+        </div>
+
+        <!-- Ngan 2 -->
+        <div class="compartment-card" data-id="2">
+          <div class="card-header">
+            <div class="medicine-name">Đang tải...</div>
+            <div class="schedule-time">--:--</div>
+          </div>
+          <div class="meal-note">...</div>
+          <div class="status-badge badge-present">Đang tải...</div>
+          <button class="test-btn">🔔 Test Báo Động</button>
+        </div>
+
+        <!-- Ngan 3 -->
+        <div class="compartment-card" data-id="3">
+          <div class="card-header">
+            <div class="medicine-name">Đang tải...</div>
+            <div class="schedule-time">--:--</div>
+          </div>
+          <div class="meal-note">...</div>
+          <div class="status-badge badge-present">Đang tải...</div>
+          <button class="test-btn">🔔 Test Báo Động</button>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ════════════════════════════ TAB: CÀI ĐẶT ════════════════════════════ -->
+    <div id="tab-config" class="tab-content">
+      <div class="config-form">
+        <h2 style="margin-bottom: 24px; color: var(--text);">Cấu Hình Ngăn Thuốc</h2>
+        
+        <div class="config-grid">
+          
+          <!-- Config Ngan 1 -->
+          <div class="config-column">
+            <h3>Ngăn 1 (Sáng)</h3>
+            <div class="form-group">
+              <label>Tên Thuốc</label>
+              <input type="text" id="comp1-medicine" placeholder="Vd: Thuốc dạ dày">
+            </div>
+            <div class="form-group">
+              <label>Giờ Uống (HH:MM)</label>
+              <input type="time" id="comp1-schedule" required>
+            </div>
+            <div class="form-group">
+              <label>Ghi Chú</label>
+              <input type="text" id="comp1-mealnote" placeholder="Vd: Sau khi ăn">
+            </div>
+            <div class="switch-container">
+              <label>Kích Hoạt</label>
+              <label class="switch">
+                <input type="checkbox" id="comp1-enabled" checked>
+                <span class="slider"></span>
+              </label>
+            </div>
+          </div>
+
+          <!-- Config Ngan 2 -->
+          <div class="config-column">
+            <h3>Ngăn 2 (Trưa)</h3>
+            <div class="form-group">
+              <label>Tên Thuốc</label>
+              <input type="text" id="comp2-medicine">
+            </div>
+            <div class="form-group">
+              <label>Giờ Uống (HH:MM)</label>
+              <input type="time" id="comp2-schedule" required>
+            </div>
+            <div class="form-group">
+              <label>Ghi Chú</label>
+              <input type="text" id="comp2-mealnote">
+            </div>
+            <div class="switch-container">
+              <label>Kích Hoạt</label>
+              <label class="switch">
+                <input type="checkbox" id="comp2-enabled" checked>
+                <span class="slider"></span>
+              </label>
+            </div>
+          </div>
+
+          <!-- Config Ngan 3 -->
+          <div class="config-column">
+            <h3>Ngăn 3 (Tối)</h3>
+            <div class="form-group">
+              <label>Tên Thuốc</label>
+              <input type="text" id="comp3-medicine">
+            </div>
+            <div class="form-group">
+              <label>Giờ Uống (HH:MM)</label>
+              <input type="time" id="comp3-schedule" required>
+            </div>
+            <div class="form-group">
+              <label>Ghi Chú</label>
+              <input type="text" id="comp3-mealnote">
+            </div>
+            <div class="switch-container">
+              <label>Kích Hoạt</label>
+              <label class="switch">
+                <input type="checkbox" id="comp3-enabled" checked>
+                <span class="slider"></span>
+              </label>
+            </div>
+          </div>
+
+        </div> <!-- End grid -->
+        
+        <button id="save-config-btn" class="btn-primary">💾 Lưu Cài Đặt</button>
+      </div>
+    </div>
+
+    <!-- ════════════════════════════ TAB: NHẬT KÝ ════════════════════════════ -->
+    <div id="tab-logs" class="tab-content">
+      <div class="logs-header">
+        <h2 style="color: var(--text);">Lịch Sử Uống Thuốc</h2>
+        <button id="clear-logs-btn" class="btn-danger">🗑️ Xóa Lịch Sử</button>
+      </div>
+      
+      <div class="logs-container">
+        <table>
+          <thead>
+            <tr>
+              <th>Thời gian</th>
+              <th>Ngăn</th>
+              <th>Trạng thái</th>
+              <th>Nội dung</th>
+            </tr>
+          </thead>
+          <tbody id="logs-table-body">
+            <tr>
+              <td colspan="4" class="empty-log">Đang tải dữ liệu...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </div> <!-- End container -->
+
+  <!-- Load script o cuoi de dam bao DOM da san sang -->
+  <script src="app.js"></script>
+</body>
+</html>
