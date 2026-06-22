@@ -283,7 +283,7 @@ void WifiProv_Init(AsyncWebServer &server) {
 
   // Khởi động chế độ cấu hình AP Mode + Captive Portal
   isAPMode = true;
-  WiFi.mode(WIFI_AP);
+  WiFi.mode(WIFI_AP_STA);
   
   // Phát mạng Wi-Fi không mật khẩu
   WiFi.softAP("Smart-Pillbox-Setup");
