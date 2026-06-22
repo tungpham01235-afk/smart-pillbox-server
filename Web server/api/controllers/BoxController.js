@@ -193,6 +193,10 @@ module.exports = {
                 return res.status(404).json({ message: 'Không tìm thấy thiết bị hoặc ID không hợp lệ!' });
             }
 
+            // Cập nhật hoạt động cuối cùng của thiết bị
+            box.lastActive = new Date();
+            await box.save();
+
             const compIdx = compartmentId - 1;
             let medicineName = `Ngăn ${compartmentId}`;
             let conditionDetails = 'Khác';
@@ -273,6 +277,9 @@ module.exports = {
                 return res.status(404).json({ success: false, message: 'Không tìm thấy thiết bị!' });
             }
 
+            // Cập nhật hoạt động cuối cùng của thiết bị
+            box.lastActive = new Date();
+
             // Nếu thiết bị gửi trạng thái cảm biến lên, cập nhật vào database
             let isChanged = false;
             if (s1 !== undefined && box.compartments[0]) {
@@ -310,6 +317,20 @@ module.exports = {
                         boxId: boxId
                     });
                 }
+            } else {
+                // Nếu không có thay đổi cảm biến, ta vẫn lưu lastActive
+                await box.save();
+            }
+
+            // Bắn tín hiệu trạng thái kết nối Online của thiết bị thông qua Socket
+            if (box.ownerId) {
+                const io = req.app.get('io');
+                const userId = box.ownerId.toString();
+                io.to(userId).emit('device-status', {
+                    boxId: boxId,
+                    isOnline: true,
+                    lastActive: box.lastActive
+                });
             }
 
             return res.json({

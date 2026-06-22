@@ -199,7 +199,11 @@
         <div id="view-home" class="view active">
             <div class="card bg-gradient-primary p-4 mb-4 shadow">
                 <h4 class="mb-1">Xin chào, <span id="displayUserName">Bạn</span>! 👋</h4>
-                <p class="mb-0 small opacity-90">Hệ thống tủ thuốc thông minh đang hoạt động tốt.</p>
+                <p class="mb-1 small opacity-90">Hệ thống tủ thuốc thông minh đang hoạt động tốt.</p>
+                <div class="d-flex align-items-center gap-2 mt-2">
+                    <span class="small opacity-90" style="font-size: 0.85rem;">Kết nối tủ thuốc:</span>
+                    <span id="box-connection-badge" class="badge px-3 py-1.5 fw-bold shadow-sm" style="font-size: 0.85rem; border-radius: 9999px; transition: all 0.3s; background-color: rgba(255, 255, 255, 0.2); color: #ffffff;">Đang kiểm tra...</span>
+                </div>
             </div>
 
 
@@ -416,6 +420,64 @@
         const userId = localStorage.getItem('userId');
         if (userId) socket.emit('join-room', userId);
 
+        let connectionCheckInterval = null;
+        let lastDeviceActiveTime = null;
+
+        function updateConnectionBadge(isOnline, lastActive) {
+            const badge = document.getElementById('box-connection-badge');
+            if (!badge) return;
+
+            if (lastActive) {
+                lastDeviceActiveTime = new Date(lastActive);
+            }
+
+            const boxId = localStorage.getItem('boxId');
+            if (!boxId) {
+                badge.innerText = "Chưa liên kết ⚪";
+                badge.style.backgroundColor = "rgba(255, 255, 255, 0.2)";
+                badge.style.color = "#ffffff";
+                return;
+            }
+
+            if (isOnline) {
+                badge.innerText = "Trực tuyến 🟢";
+                badge.style.backgroundColor = "#d1fae5";
+                badge.style.color = "#065f46";
+            } else {
+                let timeStr = "";
+                if (lastDeviceActiveTime) {
+                    const diffMs = new Date() - lastDeviceActiveTime;
+                    const diffMin = Math.round(diffMs / 60000);
+                    if (diffMin < 1) {
+                        timeStr = " (vừa xong)";
+                    } else if (diffMin < 60) {
+                        timeStr = ` (${diffMin} phút trước)`;
+                    } else {
+                        timeStr = ` (${Math.round(diffMin / 60)} giờ trước)`;
+                    }
+                }
+                badge.innerText = `Ngoại tuyến 🔴${timeStr}`;
+                badge.style.backgroundColor = "#fee2e2";
+                badge.style.color = "#991b1b";
+            }
+        }
+
+        // Định kỳ kiểm tra kết nối để tự động chuyển sang Ngoại tuyến nếu mất tín hiệu quá 70s
+        if (!connectionCheckInterval) {
+            connectionCheckInterval = setInterval(() => {
+                const boxId = localStorage.getItem('boxId');
+                if (!boxId) {
+                    updateConnectionBadge(false, null);
+                } else if (lastDeviceActiveTime) {
+                    const diffMs = new Date() - lastDeviceActiveTime;
+                    const isOnlineNow = diffMs < 70000;
+                    updateConnectionBadge(isOnlineNow, lastDeviceActiveTime);
+                } else {
+                    updateConnectionBadge(false, null);
+                }
+            }, 5000);
+        }
+
         function showNotification(message) {
             const container = document.getElementById('toast-container');
             const toast = document.createElement('div');
@@ -429,6 +491,14 @@
             showNotification(data.message);
             loadMedicines();
             loadLogs();
+        });
+
+        socket.on('device-status', (data) => {
+            console.log("⚡ Nhận trạng thái kết nối từ ESP32:", data);
+            const boxId = localStorage.getItem('boxId');
+            if (data.boxId === boxId) {
+                updateConnectionBadge(data.isOnline, data.lastActive);
+            }
         });
 
         let cachedCompartments = [];
@@ -550,7 +620,14 @@
                         <p class="small mb-0">Vui lòng vào tab Cài đặt (Icon👤) để nhập Box ID liên kết.</p>
                     </div>
                 `;
+                updateConnectionBadge(false, null);
                 return;
+            }
+
+            // Cập nhật trạng thái kết nối từ dữ liệu API
+            const firstComp = cachedCompartments[0];
+            if (firstComp) {
+                updateConnectionBadge(firstComp.isOnline, firstComp.lastActive);
             }
 
             // Đảm bảo có đủ 3 ngăn (id 1, 2, 3)

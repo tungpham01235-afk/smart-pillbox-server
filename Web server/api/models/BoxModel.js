@@ -18,6 +18,7 @@ const CompartmentSchema = new mongoose.Schema({
 const BoxSchema = new mongoose.Schema({
     boxId: { type: String, required: true, unique: true },
     ownerId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+    lastActive: { type: Date, default: null }, // Thời gian tương tác cuối của ESP32
     
     // Mảng chứa đúng 3 ngăn thuốc cố định
     compartments: { type: [CompartmentSchema], default: [] } 

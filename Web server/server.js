@@ -98,6 +98,7 @@ app.get('/api/medicines', async (req, res) => {
                 }
             }
 
+            const isOnline = box.lastActive && (new Date() - new Date(box.lastActive) < 70000); // 70s threshold
             const list = box.compartments.map(comp => ({
                 id: comp._id,
                 compartmentId: comp.id,
@@ -106,7 +107,9 @@ app.get('/api/medicines', async (req, res) => {
                 condition: comp.mealNote,
                 time: comp.scheduleTime,
                 active: comp.enabled,
-                isMedicinePresent: comp.isMedicinePresent
+                isMedicinePresent: comp.isMedicinePresent,
+                isOnline: !!isOnline,
+                lastActive: box.lastActive
             }));
             return res.status(200).json(list);
         }
