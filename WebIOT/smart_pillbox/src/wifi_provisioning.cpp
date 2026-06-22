@@ -214,10 +214,8 @@ const char CONFIG_PORTAL_HTML[] PROGMEM = R"rawhtml(
             const params = new URLSearchParams(formData);
 
             try {
-                const res = await fetch('/save-wifi', {
-                    method: 'POST',
-                    body: params,
-                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+                const res = await fetch('/save-wifi?' + params.toString(), {
+                    method: 'POST'
                 });
 
                 if (res.ok) {
@@ -340,16 +338,16 @@ void WifiProv_Init(AsyncWebServer &server) {
     request->send(200, "application/json", json);
   });
 
-  server.on("/save-wifi", HTTP_POST, [](AsyncWebServerRequest *request) {
+  server.on("/save-wifi", HTTP_ANY, [](AsyncWebServerRequest *request) {
     String reqSsid = "";
     String reqPass = "";
     String reqBoxId = "";
     String reqDevKey = "";
 
-    if (request->hasParam("ssid", true)) reqSsid = request->getParam("ssid", true)->value();
-    if (request->hasParam("password", true)) reqPass = request->getParam("password", true)->value();
-    if (request->hasParam("boxId", true)) reqBoxId = request->getParam("boxId", true)->value();
-    if (request->hasParam("devKey", true)) reqDevKey = request->getParam("devKey", true)->value();
+    if (request->hasParam("ssid")) reqSsid = request->getParam("ssid")->value();
+    if (request->hasParam("password")) reqPass = request->getParam("password")->value();
+    if (request->hasParam("boxId")) reqBoxId = request->getParam("boxId")->value();
+    if (request->hasParam("devKey")) reqDevKey = request->getParam("devKey")->value();
 
     if (reqSsid.length() > 0) {
       Storage_SaveWifi(reqSsid, reqPass, reqBoxId, reqDevKey);
