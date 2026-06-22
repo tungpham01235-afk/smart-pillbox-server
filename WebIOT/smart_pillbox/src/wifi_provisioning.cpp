@@ -142,18 +142,18 @@ const char CONFIG_PORTAL_HTML[] PROGMEM = R"rawhtml(
             
             <div class="form-group">
                 <label>Mật khẩu Wi-Fi</label>
-                <input type="password" name="password" placeholder="Nhập mật khẩu..." required>
+                <div style="position: relative; display: flex; align-items: center;">
+                    <input type="password" name="password" id="wifi-pass" placeholder="Nhập mật khẩu..." required style="padding-right: 45px;">
+                    <button type="button" onclick="togglePassword(this)" style="position: absolute; right: 12px; background: none; border: none; color: #94a3b8; cursor: pointer; font-size: 1.2rem; outline: none; padding: 4px; display: flex; align-items: center; justify-content: center;">👁️</button>
+                </div>
             </div>
 
             <div class="form-group">
-                <label>Mã số tủ (Box ID)</label>
-                <input type="text" name="boxId" id="boxId" placeholder="Ví dụ: box_01" required>
+                <label>Mã số tủ (Box ID) — <span style="color: #38bdf8; font-weight: normal;">Cố định</span></label>
+                <input type="text" name="boxId" id="boxId" readonly style="background: rgba(15, 23, 42, 0.4); border-color: rgba(255,255,255,0.05); color: #94a3b8; cursor: not-allowed;">
             </div>
 
-            <div class="form-group">
-                <label>Mã khóa thiết bị (Secret Key)</label>
-                <input type="text" name="devKey" id="devKey" required>
-            </div>
+            <input type="hidden" name="devKey" id="devKey">
             
             <button type="submit" class="btn-submit" id="submit-btn">Lưu cấu hình</button>
         </form>
@@ -163,11 +163,24 @@ const char CONFIG_PORTAL_HTML[] PROGMEM = R"rawhtml(
     <div class="container" id="success-card" style="display:none;">
         <div class="success-icon">✓</div>
         <div class="success-title">Đã Lưu Thiết Lập!</div>
-        <p class="subtitle" style="margin-bottom: 20px;">Tủ thuốc đang khởi động lại để kết nối với mạng Wi-Fi mới của bạn.</p>
-        <p class="subtitle" style="font-size:0.85rem; color:#38bdf8;">Hãy tắt Wi-Fi này và mở App/Web Server để kiểm tra kết nối Online sau 15-20 giây.</p>
+        <p class="subtitle" style="margin-bottom: 20px;">Hộp thuốc đang khởi động lại để kết nối mạng Wi-Fi mới.</p>
+        <p class="subtitle" style="font-size:0.85rem; color:#f87171; line-height: 1.5; text-align: left; background: rgba(248, 113, 113, 0.1); padding: 12px; border-radius: 8px; border: 1px solid rgba(248, 113, 113, 0.2);">
+            ⚠️ <strong>Lưu ý về mật khẩu:</strong> Nếu sau 20 giây thiết bị vẫn ngoại tuyến, có thể bạn đã nhập sai mật khẩu Wi-Fi. Hãy kết nối lại mạng <strong>Smart-Pillbox-Setup</strong> để cấu hình lại.
+        </p>
     </div>
 
     <script>
+        function togglePassword(btn) {
+            const input = document.getElementById('wifi-pass');
+            if (input.type === 'password') {
+                input.type = 'text';
+                btn.textContent = '🙈';
+            } else {
+                input.type = 'password';
+                btn.textContent = '👁️';
+            }
+        }
+
         async function loadDefaults() {
             try {
                 const res = await fetch('/api/defaults');

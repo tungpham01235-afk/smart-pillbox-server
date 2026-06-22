@@ -511,7 +511,10 @@
                 </div>
                 <div class="form-group">
                     <label>Mật khẩu</label>
-                    <input type="password" id="l-password" placeholder="••••••••">
+                    <div style="position: relative; display: flex; align-items: center;">
+                        <input type="password" id="l-password" placeholder="••••••••" style="padding-right: 45px;">
+                        <button type="button" onclick="toggleGenericPassword('l-password', this)" style="position: absolute; right: 12px; background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 1.2rem; outline: none; padding: 4px; display: flex; align-items: center; justify-content: center; width: auto; box-shadow: none; margin: 0;">👁️</button>
+                    </div>
                 </div>
                 <button id="loginBtn" onclick="handleLogin()">Đăng nhập</button>
                 <p class="toggle-link" onclick="toggleForm(true)">Chưa có tài khoản? Đăng ký ngay</p>
@@ -529,7 +532,10 @@
                     </div>
                     <div class="form-group">
                         <label>Mật khẩu</label>
-                        <input type="password" id="r-password" placeholder="••••••••">
+                        <div style="position: relative; display: flex; align-items: center;">
+                            <input type="password" id="r-password" placeholder="••••••••" style="padding-right: 45px;">
+                            <button type="button" onclick="toggleGenericPassword('r-password', this)" style="position: absolute; right: 12px; background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 1.2rem; outline: none; padding: 4px; display: flex; align-items: center; justify-content: center; width: auto; box-shadow: none; margin: 0;">👁️</button>
+                        </div>
                     </div>
                     <button id="regBtn" onclick="handleRegister()">Gửi mã xác thực</button>
                 </div>
@@ -553,6 +559,17 @@
     </div>
 
     <script>
+        function toggleGenericPassword(inputId, btn) {
+            const input = document.getElementById(inputId);
+            if (input.type === 'password') {
+                input.type = 'text';
+                btn.textContent = '🙈';
+            } else {
+                input.type = 'password';
+                btn.textContent = '👁️';
+            }
+        }
+
         const API_URL = '/api';
 
         // 1. URL Query Parameter & LocalStorage Parsing
