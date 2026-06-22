@@ -1,0 +1,20 @@
+# Credentials and API keys
+mật khẩu app.txt
+mật khẩu elasticemail.txt
+resend api key.txt
+.env
+.env*
+
+# Build and cache directories
+.pio/
+.cache/
+node_modules/
+
+# VS Code and local settings
+.vscode/
+.clangd
+
+# System files
+.DS_Store
+Thumbs.db
+*.log

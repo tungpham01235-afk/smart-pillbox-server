@@ -14,16 +14,16 @@
  * ═══════════════════════════════════════════════════════════
  */
 
-#include <Arduino.h>
-#include <WiFi.h>
-#include <ESPAsyncWebServer.h>
+#include "alarm_manager.h"
+#include "cloud_sync.h"
 #include "config.h"
+#include "sensor_manager.h"
 #include "storage_manager.h"
 #include "time_manager.h"
-#include "sensor_manager.h"
-#include "alarm_manager.h"
 #include "web_server_handler.h"
-#include "cloud_sync.h"
+#include <Arduino.h>
+#include <ESPAsyncWebServer.h>
+#include <WiFi.h>
 
 // ════════════════════════════════════════
 // Global
@@ -40,7 +40,7 @@ static bool _wifiConnected = false;
 void setup() {
   // ── 1. Serial ──
   Serial.begin(115200);
-  delay(500);  // Cho Serial on dinh (chi delay trong setup)
+  delay(500); // Cho Serial on dinh (chi delay trong setup)
   Serial.println();
   Serial.println("===============================");
   Serial.println("  === TU THUOC THONG MINH ===  ");
@@ -108,7 +108,7 @@ void setup() {
     WebServer_Init(server);
     server.begin();
     DBGLN("[WEB] Server bat dau tren port 80");
-    
+
     // Khoi tao Cloud Sync
     CloudSync_Init();
     DBGLN("[BOOT] Cloud Sync san sang");

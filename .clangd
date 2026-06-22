@@ -1,2 +1,9 @@
 CompileFlags:
   Remove: [-mlongcalls, -fstrict-volatile-bitfields, -fno-tree-switch-conversion]
+  Add:
+    - -ID:/Project IOT/WebIOT/smart_pillbox/.pio/libdeps/esp32dev/ESPAsyncWebServer/src
+    - -ID:/Project IOT/WebIOT/smart_pillbox/.pio/libdeps/esp32dev/AsyncTCP/src
+    - -I.pio/libdeps/esp32dev/ESPAsyncWebServer/src
+    - -I.pio/libdeps/esp32dev/AsyncTCP/src
+
+
