@@ -441,8 +441,19 @@ void WifiProv_Init(AsyncWebServer &server) {
       if (request->hasParam("devKey")) reqDevKey = request->getParam("devKey")->value();
     }
 
+    DBGLN("[WIFI] Nhận yêu cầu lưu Wi-Fi:");
+    DBG("  - SSID: "); DBGLN(reqSsid);
+    DBG("  - Password: "); DBGLN(reqPass);
+    DBG("  - Box ID: "); DBGLN(reqBoxId);
+    DBG("  - Dev Key: "); DBGLN(reqDevKey);
+
     if (reqSsid.length() > 0) {
-      Storage_SaveWifi(reqSsid, reqPass, reqBoxId, reqDevKey);
+      bool saveSuccess = Storage_SaveWifi(reqSsid, reqPass, reqBoxId, reqDevKey);
+      if (saveSuccess) {
+        DBGLN("[WIFI] Lưu Wi-Fi thành công!");
+      } else {
+        DBGLN("[WIFI] LỖI: Ghi Wi-Fi thất bại!");
+      }
       
       AsyncWebServerResponse *response = request->beginResponse_P(200, "text/html", CONFIG_PORTAL_SUCCESS_HTML);
       response->addHeader("Cache-Control", "no-cache, no-store, must-revalidate");
@@ -452,6 +463,7 @@ void WifiProv_Init(AsyncWebServer &server) {
       shouldRestart = true;
       restartTimer = millis();
     } else {
+      DBGLN("[WIFI] LỖI: SSID trống!");
       request->send(400, "text/plain", "SSID must not be empty");
     }
   });

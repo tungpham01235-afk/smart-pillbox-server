@@ -58,6 +58,8 @@ bool Storage_Init() {
     DBGLN("[STORAGE] logs.json da tao thanh cong");
   }
 
+  Storage_ListFiles(); // Liệt kê danh sách file khi mount thành công
+
   return true;
 }
 
@@ -259,6 +261,7 @@ bool Storage_SaveWifi(const String &ssid, const String &pass, const String &boxI
   doc["devKey"] = devKey;
 
   serializeJson(doc, file);
+  file.flush(); // Đảm bảo ghi xong xuống flash
   file.close();
   DBGLN("[STORAGE] Saved wifi config to wifi.json");
   return true;
@@ -272,4 +275,29 @@ void Storage_ClearWifi() {
     LittleFS.remove("/wifi.json");
     DBGLN("[STORAGE] Da xoa file wifi.json!");
   }
+}
+
+void Storage_ListFiles() {
+  DBGLN("[STORAGE] --- DANH SÁCH FILE TRÊN LITTLEFS ---");
+  File root = LittleFS.open("/");
+  if (!root) {
+    DBGLN("[STORAGE] Không thể mở thư mục gốc!");
+    return;
+  }
+  
+  File file = root.openNextFile();
+  int fileCount = 0;
+  while (file) {
+    Serial.print("  - File: ");
+    Serial.print(file.name());
+    Serial.print(" | Size: ");
+    Serial.print(file.size());
+    Serial.println(" bytes");
+    fileCount++;
+    file = root.openNextFile();
+  }
+  if (fileCount == 0) {
+    DBGLN("[STORAGE] Thư mục gốc rỗng.");
+  }
+  DBGLN("[STORAGE] -------------------------------------");
 }

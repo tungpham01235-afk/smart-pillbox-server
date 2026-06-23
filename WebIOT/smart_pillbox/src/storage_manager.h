@@ -21,3 +21,4 @@ bool Storage_ClearLogs();
 bool Storage_LoadWifi(String &ssid, String &pass, String &boxId, String &devKey);
 bool Storage_SaveWifi(const String &ssid, const String &pass, const String &boxId, const String &devKey);
 void Storage_ClearWifi();
+void Storage_ListFiles();
