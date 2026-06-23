@@ -17,6 +17,19 @@ static bool isAPMode = false;
 static bool shouldRestart = false;
 static unsigned long restartTimer = 0;
 
+static unsigned long lastScanRequestTime = 0;
+
+static void triggerWifiScan() {
+  if (millis() - lastScanRequestTime > 10000 || lastScanRequestTime == 0) {
+    DBGLN("[WIFI] Kích hoạt quét Wi-Fi bất đồng bộ...");
+    WiFi.scanDelete();
+    WiFi.scanNetworks(true);
+    lastScanRequestTime = millis();
+  } else {
+    DBGLN("[WIFI] Yêu cầu quét quá nhanh, bỏ qua để tránh nghẽn.");
+  }
+}
+
 // Giao diện web cấu hình Wi-Fi Glassmorphism (HTML/CSS/JS)
 const char CONFIG_PORTAL_HTML[] PROGMEM = R"rawhtml(
 <!DOCTYPE html>
@@ -296,6 +309,8 @@ void WifiProv_Init(AsyncWebServer &server) {
     } else {
       Serial.println();
       DBGLN("[WIFI] Không thể kết nối Wi-Fi đã lưu (Timeout 15s)!");
+      WiFi.disconnect(); // Ngắt nỗ lực kết nối STA nền để tránh lỗi bộ quét
+      delay(100);
     }
   } else {
     DBGLN("[WIFI] Chưa có cấu hình Wi-Fi nào được lưu.");
@@ -313,8 +328,8 @@ void WifiProv_Init(AsyncWebServer &server) {
   DBG("[WIFI] IP Cấu hình: ");
   DBGLN(apIP.toString());
 
-  // Khởi động lượt quét Wi-Fi bất đồng bộ đầu tiên
-  WiFi.scanNetworks(true);
+  // Khởi động lượt quét Wi-Fi bất đồng bộ đầu tiên với cơ chế chống spam
+  triggerWifiScan();
 
   // DNS Server chuyển hướng tất cả truy cập (*) về IP AP của ESP32
   dnsServer.start(53, "*", apIP);
@@ -335,8 +350,7 @@ void WifiProv_Init(AsyncWebServer &server) {
     if (n == WIFI_SCAN_RUNNING) {
       request->send(200, "application/json", "{\"status\":\"scanning\"}");
     } else if (n == WIFI_SCAN_FAILED) {
-      // Quét lỗi hoặc chưa quét, kích hoạt quét lại bất đồng bộ
-      WiFi.scanNetworks(true);
+      triggerWifiScan();
       request->send(200, "application/json", "{\"status\":\"scanning\"}");
     } else if (n >= 0) {
       DynamicJsonDocument doc(1024);
@@ -357,14 +371,13 @@ void WifiProv_Init(AsyncWebServer &server) {
       
       String json;
       serializeJson(doc, json);
-      WiFi.scanDelete(); // Giải phóng bộ nhớ kết quả quét cũ
-      
-      // Kích hoạt luôn lượt quét mới ngầm để chuẩn bị cho lần quét sau
-      WiFi.scanNetworks(true);
       
       request->send(200, "application/json", json);
+      
+      // Kích hoạt luôn lượt quét mới ngầm với cơ chế chống spam
+      triggerWifiScan();
     } else {
-      WiFi.scanNetworks(true);
+      triggerWifiScan();
       request->send(200, "application/json", "{\"status\":\"scanning\"}");
     }
   });
