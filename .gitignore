@@ -2,8 +2,9 @@
 mật khẩu app.txt
 mật khẩu elasticemail.txt
 resend api key.txt
-.env
-.env*
+Web server/.env
+Web server/.env*
+Web server/.env.local
 
 # Build and cache directories
 .pio/
