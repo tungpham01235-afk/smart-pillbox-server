@@ -135,3 +135,8 @@ bool TimeManager_IsWithinAlarmWindow(const String &scheduleTime,
   // Truong hop binh thuong
   return (nowTotalMin >= schedTotalMin) && (nowTotalMin < windowEnd);
 }
+
+unsigned long TimeManager_GetAbsoluteDay() {
+  if (!_timeValid) return 0;
+  return timeClient.getEpochTime() / 86400UL;
+}

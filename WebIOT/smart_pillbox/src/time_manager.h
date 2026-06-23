@@ -19,3 +19,4 @@ int    TimeManager_GetHour();
 int    TimeManager_GetMinute();
 bool   TimeManager_IsWithinAlarmWindow(const String& scheduleTime,
                                        int windowMinutes = ALARM_WINDOW_MIN);
+unsigned long TimeManager_GetAbsoluteDay();

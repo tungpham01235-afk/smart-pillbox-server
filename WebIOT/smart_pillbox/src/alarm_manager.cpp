@@ -23,6 +23,7 @@ static CompartmentConfig _config[NUM_COMPARTMENTS];
 static unsigned long     _alarmStartTime[NUM_COMPARTMENTS];
 static bool              _testMode[NUM_COMPARTMENTS];
 static unsigned long     _testStartTime[NUM_COMPARTMENTS];
+static unsigned long     _lastAlarmHandledDay[NUM_COMPARTMENTS];
 
 // LED blink state (per compartment)
 static bool              _ledOn[NUM_COMPARTMENTS];
@@ -53,6 +54,7 @@ void AlarmManager_Init() {
     _ledLastToggle[i]  = 0;
     _alarmStartTime[i] = 0;
     _testStartTime[i]  = 0;
+    _lastAlarmHandledDay[i] = 0;
   }
 
   // Cau hinh GPIO cho Buzzer
@@ -79,10 +81,23 @@ void AlarmManager_ReloadConfig() {
   JsonArray compartments = doc["compartments"].as<JsonArray>();
   for (int i = 0; i < NUM_COMPARTMENTS && i < (int)compartments.size(); i++) {
     JsonObject comp = compartments[i];
-    _config[i].medicineName = comp["medicineName"].as<String>();
-    _config[i].scheduleTime = comp["scheduleTime"].as<String>();
-    _config[i].mealNote     = comp["mealNote"].as<String>();
-    _config[i].enabled      = comp["enabled"] | true;
+    String newMedName = comp["medicineName"].as<String>();
+    String newSchedTime = comp["scheduleTime"].as<String>();
+    String newMealNote = comp["mealNote"].as<String>();
+    bool newEnabled = comp["enabled"] | true;
+
+    // Reset cờ đã uống hôm nay nếu lịch uống hoặc thuốc có sự thay đổi
+    if (_config[i].scheduleTime != newSchedTime || 
+        _config[i].enabled != newEnabled || 
+        _config[i].medicineName != newMedName) {
+      _lastAlarmHandledDay[i] = 0;
+      DBGLN("[ALARM] Lịch trình ngăn " + String(i + 1) + " thay đổi. Reset cờ hoàn thành.");
+    }
+
+    _config[i].medicineName = newMedName;
+    _config[i].scheduleTime = newSchedTime;
+    _config[i].mealNote     = newMealNote;
+    _config[i].enabled      = newEnabled;
   }
 
   DBGLN("[ALARM] Config reloaded");
@@ -113,6 +128,7 @@ void AlarmManager_Update() {
     // KICH BAN B: Dang ALARMING, nguoi dung nhac hop len
     if (justAbsent && _state[i] == ALARM_ALARMING) {
       _state[i] = ALARM_IDLE;
+      _lastAlarmHandledDay[i] = TimeManager_GetAbsoluteDay(); // Khóa báo động của cữ hôm nay
 
       String timeStr = TimeManager_GetTimeString();
       String msg = "[" + timeStr + "] " + _config[i].medicineName + ": Da uong DUNG GIO";
@@ -141,6 +157,7 @@ void AlarmManager_Update() {
       unsigned long alarmDuration = (millis() - _alarmStartTime[i]) / 60000UL;
       if (alarmDuration >= ALARM_WINDOW_MIN) {
         _state[i] = ALARM_IDLE;
+        _lastAlarmHandledDay[i] = TimeManager_GetAbsoluteDay(); // Khóa báo động cữ hôm nay do trễ hạn
 
         String timeStr = TimeManager_GetTimeString();
         String msg = "[" + timeStr + "] " + _config[i].medicineName + ": Qua gio - khong uong thuoc!";
@@ -156,15 +173,18 @@ void AlarmManager_Update() {
     // KICH BAN A: Den gio hen + thuoc van trong ngan
     if (_config[i].enabled && _state[i] == ALARM_IDLE && isPresent) {
       if (TimeManager_IsWithinAlarmWindow(_config[i].scheduleTime)) {
-        _state[i]          = ALARM_ALARMING;
-        _alarmStartTime[i] = millis();
+        // Chỉ kích hoạt cữ báo động nếu ngày hôm nay chưa được xử lý
+        if (_lastAlarmHandledDay[i] != TimeManager_GetAbsoluteDay()) {
+          _state[i]          = ALARM_ALARMING;
+          _alarmStartTime[i] = millis();
 
-        DBG("[ALARM] Ngan ");
-        DBG(i + 1);
-        DBGLN(": Kich ban A - Den gio hen!");
+          DBG("[ALARM] Ngan ");
+          DBG(i + 1);
+          DBGLN(": Kich ban A - Den gio hen!");
 
-        // Gửi thông báo đến giờ uống thuốc lên server ngay lập tức
-        CloudSync_SendLog(i + 1, "Chưa uống");
+          // Gửi thông báo đến giờ uống thuốc lên server ngay lập tức
+          CloudSync_SendLog(i + 1, "Chưa uống");
+        }
       }
     }
   }
