@@ -238,34 +238,10 @@ const char CONFIG_PORTAL_HTML[] PROGMEM = R"rawhtml(
             }
         }
 
-        async function handleSubmit(e) {
-            e.preventDefault();
+        function handleSubmit(e) {
             const btn = document.getElementById('submit-btn');
-            btn.disabled = true;
             btn.innerHTML = '<span class="loader"></span>Đang lưu thiết lập...';
-
-            const form = document.getElementById('wifi-form');
-            const formData = new FormData(form);
-            const params = new URLSearchParams(formData);
-
-            try {
-                const res = await fetch('/save-wifi?' + params.toString(), {
-                    method: 'POST'
-                });
-
-                if (res.ok) {
-                    document.getElementById('main-card').style.display = 'none';
-                    document.getElementById('success-card').style.display = 'block';
-                } else {
-                    alert('Lỗi: Gặp sự cố khi lưu cấu hình.');
-                    btn.disabled = false;
-                    btn.textContent = 'Lưu cấu hình';
-                }
-            } catch (e) {
-                alert('Lỗi kết nối tới thiết bị!');
-                btn.disabled = false;
-                btn.textContent = 'Lưu cấu hình';
-            }
+            setTimeout(() => { btn.disabled = true; }, 50);
         }
 
         window.onload = async () => {
@@ -273,6 +249,55 @@ const char CONFIG_PORTAL_HTML[] PROGMEM = R"rawhtml(
             await scanWifi();
         };
     </script>
+</body>
+</html>
+)rawhtml";
+
+const char CONFIG_PORTAL_SUCCESS_HTML[] PROGMEM = R"rawhtml(
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Pillbox — Đã Lưu Thiết Lập</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Outfit', sans-serif; }
+        body {
+            background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            color: #f1f5f9;
+        }
+        .container {
+            width: 100%;
+            max-width: 420px;
+            background: rgba(30, 41, 59, 0.75);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 24px;
+            padding: 35px 30px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+            text-align: center;
+        }
+        .success-icon { font-size: 4rem; color: #22c55e; margin-bottom: 20px; }
+        .success-title { font-size: 1.6rem; color: #22c55e; margin-bottom: 10px; }
+        .subtitle { font-size: 0.9rem; color: #94a3b8; margin-bottom: 20px; line-height: 1.4; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="success-icon">✓</div>
+        <div class="success-title">Đã Lưu Thiết Lập!</div>
+        <p class="subtitle">Hộp thuốc đang khởi động lại để kết nối mạng Wi-Fi mới.</p>
+        <p class="subtitle" style="font-size:0.85rem; color:#f87171; line-height: 1.5; text-align: left; background: rgba(248, 113, 113, 0.1); padding: 12px; border-radius: 8px; border: 1px solid rgba(248, 113, 113, 0.2);">
+            ⚠️ <strong>Lưu ý về mật khẩu:</strong> Nếu sau 20 giây thiết bị vẫn ngoại tuyến, có thể bạn đã nhập sai mật khẩu Wi-Fi. Hãy kết nối lại mạng <strong>Smart-Pillbox-Setup</strong> để cấu hình lại.
+        </p>
+    </div>
 </body>
 </html>
 )rawhtml";
@@ -402,14 +427,26 @@ void WifiProv_Init(AsyncWebServer &server) {
     String reqBoxId = "";
     String reqDevKey = "";
 
-    if (request->hasParam("ssid")) reqSsid = request->getParam("ssid")->value();
-    if (request->hasParam("password")) reqPass = request->getParam("password")->value();
-    if (request->hasParam("boxId")) reqBoxId = request->getParam("boxId")->value();
-    if (request->hasParam("devKey")) reqDevKey = request->getParam("devKey")->value();
+    // Đọc từ POST body trước (cho form submit chuẩn)
+    if (request->hasParam("ssid", true)) reqSsid = request->getParam("ssid", true)->value();
+    if (request->hasParam("password", true)) reqPass = request->getParam("password", true)->value();
+    if (request->hasParam("boxId", true)) reqBoxId = request->getParam("boxId", true)->value();
+    if (request->hasParam("devKey", true)) reqDevKey = request->getParam("devKey", true)->value();
+
+    // Dự phòng đọc từ GET query string nếu POST body không có
+    if (reqSsid.length() == 0) {
+      if (request->hasParam("ssid")) reqSsid = request->getParam("ssid")->value();
+      if (request->hasParam("password")) reqPass = request->getParam("password")->value();
+      if (request->hasParam("boxId")) reqBoxId = request->getParam("boxId")->value();
+      if (request->hasParam("devKey")) reqDevKey = request->getParam("devKey")->value();
+    }
 
     if (reqSsid.length() > 0) {
       Storage_SaveWifi(reqSsid, reqPass, reqBoxId, reqDevKey);
-      request->send(200, "text/plain", "OK");
+      
+      AsyncWebServerResponse *response = request->beginResponse_P(200, "text/html", CONFIG_PORTAL_SUCCESS_HTML);
+      response->addHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+      request->send(response);
 
       // Đặt lệnh khởi động lại sau 2 giây
       shouldRestart = true;
